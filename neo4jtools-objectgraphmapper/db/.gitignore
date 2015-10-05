@@ -1,0 +1,6 @@
+*.log
+neostore*
+store_lock
+/schema
+/index
+
