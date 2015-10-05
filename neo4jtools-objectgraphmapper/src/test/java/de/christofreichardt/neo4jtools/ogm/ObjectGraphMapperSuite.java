@@ -11,7 +11,8 @@ import org.junit.runners.Suite;
 @RunWith(MySuite.class)
 @Suite.SuiteClasses({
   AnnotationProcessorUnit.class,
-  MappingInfoUnit.class
+  MappingInfoUnit.class,
+  Object2NodeMapperUnit.class
 })
 public class ObjectGraphMapperSuite {
 
