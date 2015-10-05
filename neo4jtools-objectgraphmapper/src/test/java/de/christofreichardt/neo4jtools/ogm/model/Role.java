@@ -11,9 +11,9 @@ import org.neo4j.graphdb.Direction;
  *
  * @author Christof Reichardt
  */
-@NodeEntity
+@NodeEntity(label = "ROLES")
 public class Role {
-  @Id(label = "ROLES")
+  @Id
   @Property
   private Integer id;
   

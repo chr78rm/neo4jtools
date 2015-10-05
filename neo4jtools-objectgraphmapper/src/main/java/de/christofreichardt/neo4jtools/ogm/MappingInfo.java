@@ -182,6 +182,7 @@ public class MappingInfo implements Traceable {
         for (Class<?> entityClass : entityClasses) {
           tracer.out().printfIndentln("entityClass.getName() = %s", entityClass.getName());
           
+          NodeEntity nodeEntity = entityClass.getAnnotation(NodeEntity.class);
           xmlStreamWriter.writeStartElement("NodeEntity");
           xmlStreamWriter.writeAttribute("className", entityClass.getName());
           if (entityClass.isAnnotationPresent(NodeEntity.class)) {
@@ -203,7 +204,7 @@ public class MappingInfo implements Traceable {
                 xmlStreamWriter.writeEndElement();
                 if (field.isAnnotationPresent(Id.class)) {
                   xmlStreamWriter.writeEmptyElement("Index");
-                  xmlStreamWriter.writeAttribute("label", field.getAnnotation(Id.class).label());
+                  xmlStreamWriter.writeAttribute("label", nodeEntity.label());
                   xmlStreamWriter.writeAttribute("primary", "true");
                 }
                 xmlStreamWriter.writeEndElement();

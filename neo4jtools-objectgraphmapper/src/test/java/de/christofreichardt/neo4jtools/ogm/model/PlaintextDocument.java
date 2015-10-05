@@ -6,6 +6,6 @@ import de.christofreichardt.neo4jtools.apt.NodeEntity;
  *
  * @author Christof Reichardt
  */
-@NodeEntity
+@NodeEntity(label = "DOCUMENTS")
 public class PlaintextDocument extends Document {
 }

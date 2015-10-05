@@ -11,9 +11,9 @@ import org.neo4j.graphdb.Direction;
  *
  * @author Christof Reichardt
  */
-@NodeEntity
+@NodeEntity(label = "DOCUMENTS")
 public class Document {
-  @Id(label = "DOCUMENTS")
+  @Id
   @Property
   private Integer id;
   

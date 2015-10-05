@@ -16,9 +16,9 @@ import org.neo4j.graphdb.Direction;
  *
  * @author Christof Reichardt
  */
-@NodeEntity
+@NodeEntity(label = "ACCOUNTS")
 public class Account {
-  @Id(label = "ACCOUNTS")
+  @Id
   @Property
   private final String commonName;
 

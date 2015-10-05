@@ -14,9 +14,9 @@ import de.christofreichardt.neo4jtools.ogm.Cell;
 import de.christofreichardt.neo4jtools.ogm.Wrapper;
 import org.neo4j.graphdb.Direction;
 
-@NodeEntity
+@NodeEntity(label = "KEY_ITEMS")
 public class KeyItem {
-  @Id(label = "KEY_ITEMS")
+  @Id
   @Property
   private final Integer id;
 
