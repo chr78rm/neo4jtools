@@ -82,6 +82,9 @@ public class MyAnnotationProcessor extends AbstractProcessor {
               xmlStreamWriter.writeStartElement("NodeEntity");
               xmlStreamWriter.writeAttribute("className", typeElement.getQualifiedName().toString());
               
+              NodeEntity nodeEntity = typeElement.getAnnotation(NodeEntity.class);
+              xmlStreamWriter.writeAttribute("label", nodeEntity.label());
+              
               for (Element otherElement : nodeEntityElements) {
                 if (!(otherElement.getKind() == ElementKind.CLASS))
                   this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Expected a class element.", otherElement);
@@ -200,9 +203,10 @@ public class MyAnnotationProcessor extends AbstractProcessor {
         xmlStreamWriter.writeEndElement();
         
         Id id = propertyElement.getAnnotation(Id.class);
+        NodeEntity nodeEntity = propertyElement.getEnclosingElement().getAnnotation(NodeEntity.class);
         if (id != null) {
           xmlStreamWriter.writeEmptyElement("Index");
-          xmlStreamWriter.writeAttribute("label", id.label());
+          xmlStreamWriter.writeAttribute("label", nodeEntity.label());
           xmlStreamWriter.writeAttribute("primary", "true");
         }
         xmlStreamWriter.writeEndElement();
