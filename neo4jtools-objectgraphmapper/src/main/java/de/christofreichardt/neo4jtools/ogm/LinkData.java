@@ -4,22 +4,29 @@
  */
 package de.christofreichardt.neo4jtools.ogm;
 
+import de.christofreichardt.diagnosis.AbstractTracer;
+import de.christofreichardt.diagnosis.Traceable;
+import de.christofreichardt.diagnosis.TracerFactory;
+import de.christofreichardt.neo4jtools.apt.NodeEntity;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Label;
+import org.neo4j.graphdb.Relationship;
 
 /**
  *
  * @author Developer
  */
-public class LinkData {
-  
+public class LinkData implements Traceable {
   final Direction direction;
   final String type;
-  final String entityClassName;
+  final String linkedEntityClassName;
+  final Class<?> linkedEntityClass;
 
-  public LinkData(Direction direction, String type, String entityClassName) {
+  public LinkData(Direction direction, String type, String linkedEntityClassName) throws ClassNotFoundException {
     this.direction = direction;
     this.type = type;
-    this.entityClassName = entityClassName;
+    this.linkedEntityClassName = linkedEntityClassName;
+    this.linkedEntityClass = Class.forName(this.linkedEntityClassName);
   }
 
   public Direction getDirection() {
@@ -31,17 +38,55 @@ public class LinkData {
   }
 
   public String getEntityClassName() {
-    return entityClassName;
+    return linkedEntityClassName;
   }
+  
+  public boolean matches(Class<?> startClass, Relationship relationship) {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("boolean", this, "matches(Relationship relationship)");
+    
+    try {
+      tracer.out().printfIndentln("relationship.getType().name() = %s", relationship.getType().name());
+      relationship.getStartNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("startNodeLabel = %s", startNodeLabel.name()));
+      relationship.getEndNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("endNodeLabel = %s", startNodeLabel.name()));
+      tracer.out().printfIndentln("startClass.getAnnotation(NodeEntity.class).label() = %s", startClass.getAnnotation(NodeEntity.class).label());
+      tracer.out().printfIndentln("endClass.getAnnotation(NodeEntity.class).label() = %s", this.linkedEntityClass.getAnnotation(NodeEntity.class).label());
+      
+      boolean startLabelFlag = false;
+      for (Label startLabel : relationship.getStartNode().getLabels()) {
+        if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
+          startLabelFlag = true;
+          break;
+        }
+      }
+      
+      boolean endLabelFlag = false;
+      for (Label endLabel : relationship.getEndNode().getLabels()) {
+        if (endLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
+          endLabelFlag = true;
+          break;
+        }
+      }
+      return startLabelFlag && endLabelFlag;
+    }
+    finally {
+      tracer.wayout();
+    }
+  } 
   
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder("LinkData[");
     builder.append("direction=").append(this.direction).append(", ");
     builder.append("type=").append(this.type).append(", ");
-    builder.append("entityClassName=").append(this.entityClassName);
+    builder.append("linkedEntityClassName=").append(this.linkedEntityClassName);
     builder.append(")").append("]");
     
     return builder.toString();
+  }
+
+  @Override
+  public AbstractTracer getCurrentTracer() {
+    return TracerFactory.getInstance().getCurrentPoolTracer();
   }
 }
