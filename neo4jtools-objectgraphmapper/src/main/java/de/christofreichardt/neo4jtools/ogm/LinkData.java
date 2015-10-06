@@ -46,28 +46,37 @@ public class LinkData implements Traceable {
     tracer.entry("boolean", this, "matches(Relationship relationship)");
     
     try {
+      tracer.out().printfIndentln("this.direction = %s", this.direction);
       tracer.out().printfIndentln("relationship.getType().name() = %s", relationship.getType().name());
       relationship.getStartNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("startNodeLabel = %s", startNodeLabel.name()));
       relationship.getEndNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("endNodeLabel = %s", startNodeLabel.name()));
       tracer.out().printfIndentln("startClass.getAnnotation(NodeEntity.class).label() = %s", startClass.getAnnotation(NodeEntity.class).label());
       tracer.out().printfIndentln("endClass.getAnnotation(NodeEntity.class).label() = %s", this.linkedEntityClass.getAnnotation(NodeEntity.class).label());
       
-      boolean startLabelFlag = false;
-      for (Label startLabel : relationship.getStartNode().getLabels()) {
-        if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
-          startLabelFlag = true;
-          break;
+      boolean matched;
+      if (this.direction == Direction.OUTGOING) {
+        boolean startLabelFlag = false;
+        for (Label startLabel : relationship.getStartNode().getLabels()) {
+          if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
+            startLabelFlag = true;
+            break;
+          }
         }
+
+        boolean endLabelFlag = false;
+        for (Label endLabel : relationship.getEndNode().getLabels()) {
+          if (endLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
+            endLabelFlag = true;
+            break;
+          }
+        }
+        
+        matched = startLabelFlag && endLabelFlag;
       }
+      else
+        matched = false;
       
-      boolean endLabelFlag = false;
-      for (Label endLabel : relationship.getEndNode().getLabels()) {
-        if (endLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
-          endLabelFlag = true;
-          break;
-        }
-      }
-      return startLabelFlag && endLabelFlag;
+      return matched;
     }
     finally {
       tracer.wayout();
