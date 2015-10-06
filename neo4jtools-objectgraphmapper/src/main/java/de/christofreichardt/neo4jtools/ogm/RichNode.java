@@ -7,7 +7,9 @@
 package de.christofreichardt.neo4jtools.ogm;
 
 import de.christofreichardt.diagnosis.AbstractTracer;
+import java.util.Iterator;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
 
 /**
@@ -22,17 +24,38 @@ public class RichNode {
   }
   
   public void trace(AbstractTracer tracer) {
-    tracer.out().printfIndentln(": nodeId = %d", this.node.getId());
+    tracer.out().printIndentString();
+    tracer.out().print("(");
+    Iterator<Label> iter = this.node.getLabels().iterator();
+    while(iter.hasNext()) {
+      tracer.out().print(iter.next().name());
+      if (iter.hasNext())
+        tracer.out().print(", ");
+    }
+    tracer.out().print(")");
+    tracer.out().printf(": nodeId = %d%n", this.node.getId());
+    
     Iterable<String> propertyKeys = this.node.getPropertyKeys();
     propertyKeys.forEach(propertyKey -> {
       tracer.out().printfIndentln("node[%s] = %s", propertyKey, this.node.getProperty(propertyKey));
     });
+    
     tracer.out().printfIndentln("this.node.getDegree() = %d", this.node.getDegree());
+    
     this.node.getRelationships(Direction.OUTGOING).forEach(relationship -> {
-      tracer.out().printfIndentln("node[%d] -- %s --> node[%d]",  this.node.getId(), relationship.getType().name(), relationship.getOtherNode(this.node).getId());
+      tracer.out().printfIndentln("node[%d] -- %s[%d] --> node[%d]", 
+          this.node.getId(), 
+          relationship.getType().name(), 
+          relationship.getId(), 
+          relationship.getOtherNode(this.node).getId());
     });
+    
     this.node.getRelationships(Direction.INCOMING).forEach(relationship -> {
-      tracer.out().printfIndentln("node[%d] <-- %s -- node[%d]", this.node.getId(), relationship.getType().name(), relationship.getOtherNode(this.node).getId());
+      tracer.out().printfIndentln("node[%d] <-- %s[%d] -- node[%d]", 
+          this.node.getId(), 
+          relationship.getType().name(), 
+          relationship.getId(), 
+          relationship.getOtherNode(this.node).getId());
     });
   }
 }
