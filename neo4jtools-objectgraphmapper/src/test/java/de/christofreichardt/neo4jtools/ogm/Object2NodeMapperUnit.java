@@ -120,6 +120,7 @@ public class Object2NodeMapperUnit implements Traceable {
     
     try {
       LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
       
       Account account = new Account("Tester");
       account.setCountryCode("DE");
@@ -129,15 +130,21 @@ public class Object2NodeMapperUnit implements Traceable {
       KeyItem keyItem = new KeyItem(0);
       keyItem.setAccount(account);
       keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
-      keyItem.setCreationDate(localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      keyItem.setCreationDate(formattedTime);
       keyItems.add(keyItem);
       account.setKeyItems(keyItems);
       List<Document> documents = new ArrayList<>();
       Document document = new Document(0);
       document.setAccount(account);
-      document.setTitle("Testdocument");
+      document.setTitle("Testdocument-1");
       document.setType("pdf");
-      document.setCreationDate(localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      document.setCreationDate(formattedTime);
+      documents.add(document);
+      document = new Document(1);
+      document.setAccount(account);
+      document.setTitle("Testdocument-2");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
       documents.add(document);
       account.setDocuments(documents);
       
@@ -148,6 +155,16 @@ public class Object2NodeMapperUnit implements Traceable {
       }
       
       traceAllNodes();
+      
+      object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      
+      traceAllNodes();
+      
+      account.setDocuments(null);
       
       object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
