@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
@@ -92,6 +93,7 @@ public class Object2NodeMapper implements Traceable {
         this.processingEntityIds2NodeMap.get(this.entityClass).put(primaryKeyValue, entityNode);
         entityNode = coverProperties(entityNode);
         entityNode = coverLinks(entityNode, labels, relationshipTypes);
+        entityNode = coverSingleLinks(entityNode, labels, relationshipTypes);
         
         return entityNode;
       }
@@ -144,8 +146,8 @@ public class Object2NodeMapper implements Traceable {
     }
   }
   
-  private <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> 
-    Node coverLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes) throws Object2NodeMapper.Exception {
+  private <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType>
+      Node coverLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes) throws Object2NodeMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("Node", this, "coverLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes)");
     
@@ -157,43 +159,48 @@ public class Object2NodeMapper implements Traceable {
         
         tracer.out().printfIndentln("linkMapping[%s] = %s", fieldName, linkData);
         
-        RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
-        entityNode.getRelationships(relationshipType).forEach(relationShip -> {
-          boolean matched = linkData.matches(this.entityClass, relationShip);
-          tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
-          if (matched)
-            relationShip.delete();
-        });
-        
         try {
           Field linkField = this.entityClass.getDeclaredField(fieldName);
           linkField.setAccessible(true);
-          if (linkField.get(this.entity) != null  &&  followLinks(linkField, linkData)) {
+          if (followLinks(linkField, linkData)) {
+            RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
+            entityNode.getRelationships(Direction.OUTGOING, relationshipType).forEach(relationShip -> {
+              boolean matched = linkData.matches(this.entityClass, relationShip);
+              tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
+              if (matched)
+                relationShip.delete();
+            });
+            
             Class<?> linkedEntityClass = Class.forName(linkData.getEntityClassName());
             if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
               this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
             
-            String idFieldName = this.mappingInfo.getIdFieldName(linkedEntityClass);
-            Field idField = linkedEntityClass.getDeclaredField(idFieldName);
-            idField.setAccessible(true);
-            
             Collection<?> linkedEntities = (Collection<?>) linkField.get(this.entity);
-            for (Object linkedEntity : linkedEntities) {
-              tracer.out().printfIndentln("linkedEntity = %s", linkedEntity);
+            if (linkedEntities != null) {
+              String idFieldName = this.mappingInfo.getIdFieldName(linkedEntityClass);
+              Field idField = linkedEntityClass.getDeclaredField(idFieldName);
+              idField.setAccessible(true);
               
-              Object primaryKey = idField.get(linkedEntity);
-              if (primaryKey == null)
-                throw new Object2NodeMapper.Exception("Primary key is null.");
-              
-              if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
-                Object2NodeMapper object2NodeMapper = new Object2NodeMapper(linkedEntity, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
-                Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
-                Relationship relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+              for (Object linkedEntity : linkedEntities) {
+                tracer.out().printfIndentln("linkedEntity = %s", linkedEntity);
+
+                Object primaryKey = idField.get(linkedEntity);
+                if (primaryKey == null)
+                  throw new Object2NodeMapper.Exception("Primary key is null.");
+
+                if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
+                  Object2NodeMapper object2NodeMapper = new Object2NodeMapper(linkedEntity, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
+                  Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
+                  entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                }
+                else {
+                  Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
+                  entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                }
               }
-              else {
-                Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
-                entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
-              }
+            }
+            else {
+              // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
             }
           }
         }
@@ -214,7 +221,88 @@ public class Object2NodeMapper implements Traceable {
   }
     
   private boolean followLinks(Field linkField, LinkData linkData) {
-    return true;
+    return linkData.getDirection() == Direction.OUTGOING;
+  }
+  
+  private <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType>
+      Node coverSingleLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes) throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("Node", this, "coverSingleLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes)");
+
+    try {
+      Set<Map.Entry<String, SingleLinkData>> singleLinkMappings = this.mappingInfo.getSingleLinkMappings(this.entityClass);
+      for (Map.Entry<String, SingleLinkData> singleLinkMapping : singleLinkMappings) {
+        String fieldName = singleLinkMapping.getKey();
+        SingleLinkData singleLinkData = singleLinkMapping.getValue();
+        
+        tracer.out().printfIndentln("singleLinkMapping[%s] = %s", fieldName, singleLinkData);
+        
+        try {
+          Field singleLinkField = this.entityClass.getDeclaredField(fieldName);
+          singleLinkField.setAccessible(true);
+          
+          if (followSingleLink(singleLinkField, singleLinkData)) {
+            Cell<?> cell = (Cell<?>) singleLinkField.get(this.entity);
+            if (!singleLinkData.isNullable() && (cell == null || cell.getEntity() == null))
+              throw new Object2NodeMapper.Exception("Entity required for " + singleLinkData);
+            
+            RelationshipType relationshipType = Enum.valueOf(relationshipTypes, singleLinkData.getType());
+            Relationship singleRelationship = entityNode.getSingleRelationship(relationshipType, Direction.OUTGOING);
+            if (singleRelationship != null) {
+              boolean matched = singleLinkData.matches(this.entityClass, singleRelationship);
+              tracer.out().printfIndentln("%s matched: %b", singleRelationship, matched);
+              if (matched) {
+                singleRelationship.delete();
+              }
+            }
+            
+            Class<?> linkedEntityClass = Class.forName(singleLinkData.getEntityClassName());
+            if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
+              this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
+            
+            if (cell != null  &&  cell.getEntity() != null) {
+              tracer.out().printfIndentln("linkedEntity = %s", cell.getEntity());
+              
+              String idFieldName = this.mappingInfo.getIdFieldName(linkedEntityClass);
+              Field idField = linkedEntityClass.getDeclaredField(idFieldName);
+              idField.setAccessible(true);
+              Object primaryKey = idField.get(cell.getEntity());
+              if (primaryKey == null)
+                throw new Object2NodeMapper.Exception("Primary key is null.");
+              
+              if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
+                Object2NodeMapper object2NodeMapper = new Object2NodeMapper(cell, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
+                Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
+                entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+              }
+              else {
+                Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
+                entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+              }
+            }
+            else {
+              // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
+            }
+          }
+        }
+        catch (NoSuchFieldException | ClassNotFoundException ex) {
+          tracer.logException(LogLevel.ERROR, ex, getClass(), "coverSingleLinks(final Node entityNode, Class<S> labels, Class<T> relationshipTypes)");
+          throw new Object2NodeMapper.Exception("Invalid mapping definition.", ex);
+        }
+        catch (IllegalAccessException ex) {
+          throw new Error(ex); // should be impossible since the field has been made accessible
+        }
+      }
+      
+      return entityNode;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+      
+  private boolean followSingleLink(Field singleLinkField, SingleLinkData singleLinkData) {
+    return singleLinkData.getDirection() == Direction.OUTGOING;
   }
 
   @Override
