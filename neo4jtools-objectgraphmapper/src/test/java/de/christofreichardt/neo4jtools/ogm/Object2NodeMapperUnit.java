@@ -4,6 +4,7 @@ import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
+import de.christofreichardt.neo4jtools.ogm.model.Document;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
@@ -131,10 +132,47 @@ public class Object2NodeMapperUnit implements Traceable {
       keyItem.setCreationDate(localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
       keyItems.add(keyItem);
       account.setKeyItems(keyItems);
+      List<Document> documents = new ArrayList<>();
+      Document document = new Document(0);
+      document.setAccount(account);
+      document.setTitle("Testdocument");
+      document.setType("pdf");
+      document.setCreationDate(localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+      documents.add(document);
+      account.setDocuments(documents);
       
       Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
         object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      
+      traceAllNodes();
+      
+      object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      
+      traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private void traceAllNodes() {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "traceAllNodes()");
+    
+    try {
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        ResourceIterable<Node> nodes = GlobalGraphOperations.at(Object2NodeMapperUnit.graphDatabaseService).getAllNodes();
+        nodes.forEach(node -> {
+          RichNode richNode = new RichNode(node);
+          richNode.trace(tracer);
+        });
         transaction.success();
       }
     }
@@ -149,14 +187,6 @@ public class Object2NodeMapperUnit implements Traceable {
     tracer.entry("void", this, "exit()");
     
     try {
-      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
-        ResourceIterable<Node> nodes = GlobalGraphOperations.at(Object2NodeMapperUnit.graphDatabaseService).getAllNodes();
-        nodes.forEach(node -> {
-          RichNode richNode = new RichNode(node);
-          richNode.trace(tracer);
-        });
-        transaction.success();
-      }
     }
     finally {
       tracer.wayout();
