@@ -14,8 +14,8 @@ public class SingleLinkData extends LinkData {
   
   final private boolean nullable;
 
-  public SingleLinkData(Direction direction, String type, String entityClassName, boolean nullable) {
-    super(direction, type, entityClassName);
+  public SingleLinkData(Direction direction, String type, String linkedEntityClassName, boolean nullable) throws ClassNotFoundException {
+    super(direction, type, linkedEntityClassName);
     this.nullable = nullable;
   }
 
@@ -28,7 +28,7 @@ public class SingleLinkData extends LinkData {
     StringBuilder builder = new StringBuilder("SingleLinkData[");
     builder.append("direction=").append(this.direction).append(", ");
     builder.append("type=").append(this.type).append(", ");
-    builder.append("entityClassName=").append(this.entityClassName).append(", ");
+    builder.append("linkedEntityClassName=").append(this.linkedEntityClassName).append(", ");
     builder.append("nullable=").append(this.nullable);
     builder.append(")");
     builder.append("]");
