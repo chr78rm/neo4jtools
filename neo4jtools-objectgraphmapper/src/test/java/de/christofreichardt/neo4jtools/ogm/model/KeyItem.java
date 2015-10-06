@@ -66,4 +66,9 @@ public class KeyItem {
   public void setAccount(Account account) {
     this.account = new Wrapper<>(account);
   }
+
+  @Override
+  public String toString() {
+    return "KeyItem[" + "id=" + id + "]";
+  }
 }

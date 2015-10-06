@@ -37,7 +37,7 @@ public class Account {
   @Links(direction = Direction.OUTGOING, type = "FULFILLS")
   private Collection<Role> roles;
   
-  @Links(direction = Direction.OUTGOING, type = "HAS")
+  @Links(direction = Direction.OUTGOING, type = "OWNS")
   private Collection<Document> documents;
 
   public Account(String commonName) {
@@ -94,6 +94,11 @@ public class Account {
 
   public void setDocuments(Collection<Document> documents) {
     this.documents = documents;
+  }
+
+  @Override
+  public String toString() {
+    return "Account[" + "commonName=" + commonName + "]";
   }
   
 }
