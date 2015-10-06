@@ -77,12 +77,15 @@ public class Object2NodeMapper implements Traceable {
           throw new Object2NodeMapper.Exception("Primary key references null.");
         String idPropertyKey = this.mappingInfo.getPropertyMappingForField(idFieldName, this.entityClass).getName();
         
-        tracer.out().printfIndentln("idFieldName = %s", idFieldName);
-        tracer.out().printfIndentln("primaryKey = %s", primaryKeyValue);
+        tracer.out().printfIndentln("idFieldName[%s] = %s", idFieldName, primaryKeyValue);
         
         Node entityNode = this.graphDatabaseService.findNode(Enum.valueOf(labels, this.label), idPropertyKey, primaryKeyValue);
-        if (entityNode == null)
+        if (entityNode == null) {
+          tracer.out().printfIndentln("Saving ...");
           entityNode = this.graphDatabaseService.createNode(Enum.valueOf(labels, this.label));
+        }
+        else
+          tracer.out().printfIndentln("Merging ...");
         
         // TODO: check for staleness
         
@@ -155,7 +158,12 @@ public class Object2NodeMapper implements Traceable {
         tracer.out().printfIndentln("linkMapping[%s] = %s", fieldName, linkData);
         
         RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
-        entityNode.getRelationships(relationshipType).forEach(relationShip -> relationShip.delete());
+        entityNode.getRelationships(relationshipType).forEach(relationShip -> {
+          boolean matched = linkData.matches(this.entityClass, relationShip);
+          tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
+          if (matched)
+            relationShip.delete();
+        });
         
         try {
           Field linkField = this.entityClass.getDeclaredField(fieldName);
@@ -178,14 +186,11 @@ public class Object2NodeMapper implements Traceable {
                 throw new Object2NodeMapper.Exception("Primary key is null.");
               
               if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
-                tracer.out().printfIndentln("-- 1 --");
                 Object2NodeMapper object2NodeMapper = new Object2NodeMapper(linkedEntity, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
                 Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
                 Relationship relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
-                tracer.out().printfIndentln("%d: %d -- %s --> %d", relationship.getId(), relationship.getStartNode().getId(), relationship.getType().name(), relationship.getEndNode().getId());
               }
               else {
-                tracer.out().printfIndentln("-- 2 --");
                 Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
                 entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
