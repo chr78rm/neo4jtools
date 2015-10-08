@@ -281,8 +281,6 @@ public class Object2NodeMapper implements Traceable {
               }
             }
             else {
-              if (!singleLinkData.isNullable())
-                throw new Object2NodeMapper.Exception("Value required for property '" + fieldName + "'.");
               // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
             }
           }
