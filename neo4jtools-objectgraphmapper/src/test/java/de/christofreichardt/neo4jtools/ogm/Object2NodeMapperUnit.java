@@ -6,6 +6,7 @@ import de.christofreichardt.diagnosis.TracerFactory;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
+import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
 import java.io.File;
@@ -20,7 +21,9 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
@@ -38,7 +41,10 @@ public class Object2NodeMapperUnit implements Traceable {
   static public GraphDatabaseService graphDatabaseService;
   final static String DB_PATH = "." + File.separator + "db";
   final private Properties properties;
-
+  
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
+  
   public Object2NodeMapperUnit(Properties properties) {
     this.properties = properties;
   }
@@ -114,6 +120,31 @@ public class Object2NodeMapperUnit implements Traceable {
   }
   
   @Test
+  public void nonNullableProperty() throws MappingInfo.Exception, Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "nonNullableProperty()");
+    
+    try {
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName(null);
+      
+      thrown.expect(Object2NodeMapper.Exception.class);
+      thrown.expectMessage("Value required for property");
+      
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
   public void entityTree() throws MappingInfo.Exception, Object2NodeMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("void", this, "entityTree()");
@@ -126,13 +157,16 @@ public class Object2NodeMapperUnit implements Traceable {
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
       account.setStateName("Hessen");
+      KeyRing keyRing = new KeyRing(0);
+      keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
       List<KeyItem> keyItems = new ArrayList<>();
       KeyItem keyItem = new KeyItem(0);
       keyItem.setAccount(account);
       keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
       keyItem.setCreationDate(formattedTime);
       keyItems.add(keyItem);
-      account.setKeyItems(keyItems);
+      keyRing.setKeyItems(keyItems);
+      account.setKeyRing(keyRing);
       List<Document> documents = new ArrayList<>();
       Document document = new Document(0);
       document.setAccount(account);
