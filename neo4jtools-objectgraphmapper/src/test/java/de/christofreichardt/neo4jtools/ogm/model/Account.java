@@ -9,6 +9,9 @@ import de.christofreichardt.neo4jtools.apt.Id;
 import de.christofreichardt.neo4jtools.apt.Links;
 import de.christofreichardt.neo4jtools.apt.NodeEntity;
 import de.christofreichardt.neo4jtools.apt.Property;
+import de.christofreichardt.neo4jtools.apt.SingleLink;
+import de.christofreichardt.neo4jtools.ogm.Cell;
+import de.christofreichardt.neo4jtools.ogm.Wrapper;
 import java.util.Collection;
 import org.neo4j.graphdb.Direction;
 
@@ -31,13 +34,13 @@ public class Account {
   @Property
   private String countryCode;
   
-  @Links(direction = Direction.OUTGOING, type = "OWNS")
-  private Collection<KeyItem> keyItems;
+  @SingleLink(direction = Direction.OUTGOING, type = "OWNS", nullable = true)
+  private Cell<KeyRing> keyRing;
   
   @Links(direction = Direction.OUTGOING, type = "FULFILLS")
   private Collection<Role> roles;
   
-  @Links(direction = Direction.OUTGOING, type = "OWNS")
+  @Links(direction = Direction.OUTGOING, type = "HAS")
   private Collection<Document> documents;
 
   public Account(String commonName) {
@@ -72,12 +75,12 @@ public class Account {
     this.countryCode = countryCode;
   }
 
-  public Collection<KeyItem> getKeyItems() {
-    return keyItems;
+  public KeyRing getKeyRing() {
+    return this.keyRing != null ? this.keyRing.getEntity() : null;
   }
 
-  public void setKeyItems(Collection<KeyItem> keyItems) {
-    this.keyItems = keyItems;
+  public void setKeyRing(KeyRing keyRing) {
+    this.keyRing = new Wrapper<>(keyRing);
   }
 
   public Collection<Role> getRoles() {

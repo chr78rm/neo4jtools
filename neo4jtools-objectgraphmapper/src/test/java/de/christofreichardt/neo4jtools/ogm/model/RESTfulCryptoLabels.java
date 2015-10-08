@@ -12,5 +12,5 @@ import org.neo4j.graphdb.Label;
  * @author developer
  */
 public enum RESTfulCryptoLabels implements Label {
-  ACCOUNTS, DOCUMENTS, KEY_ITEMS, ROLES
+  ACCOUNTS, DOCUMENTS, KEY_ITEMS, ROLES, KEY_RINGS
 }
