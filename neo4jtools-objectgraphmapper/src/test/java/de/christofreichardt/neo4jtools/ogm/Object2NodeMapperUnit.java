@@ -161,7 +161,7 @@ public class Object2NodeMapperUnit implements Traceable {
       keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
       List<KeyItem> keyItems = new ArrayList<>();
       KeyItem keyItem = new KeyItem(0);
-      keyItem.setAccount(account);
+      keyItem.setKeyRing(keyRing);
       keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
       keyItem.setCreationDate(formattedTime);
       keyItems.add(keyItem);

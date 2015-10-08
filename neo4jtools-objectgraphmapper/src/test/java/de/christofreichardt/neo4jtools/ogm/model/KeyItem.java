@@ -26,8 +26,8 @@ public class KeyItem {
   @Property
   private String creationDate;
   
-  @SingleLink(direction = Direction.INCOMING, type = "OWNS")
-  private Cell<Account> account;
+  @SingleLink(direction = Direction.INCOMING, type = "CONTAINS")
+  private Cell<KeyRing> keyRing;
 
   public KeyItem(Integer id) {
     this.id = id;
@@ -53,18 +53,12 @@ public class KeyItem {
     this.creationDate = creationDate;
   }
 
-  public Account getAccount() {
-    Account theAccount;
-    if (this.account != null)
-      theAccount = this.account.getEntity();
-    else
-      theAccount = null;
-    
-    return theAccount;
+  public KeyRing getKeyRing() {
+    return this.keyRing != null ? this.keyRing.getEntity() : null;
   }
 
-  public void setAccount(Account account) {
-    this.account = new Wrapper<>(account);
+  public void setKeyRing(KeyRing keyRing) {
+    this.keyRing = new Wrapper<>(keyRing);
   }
 
   @Override
