@@ -271,7 +271,7 @@ public class Object2NodeMapper implements Traceable {
                 throw new Object2NodeMapper.Exception("Primary key is null.");
               
               if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
-                Object2NodeMapper object2NodeMapper = new Object2NodeMapper(cell, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
+                Object2NodeMapper object2NodeMapper = new Object2NodeMapper(cell.getEntity(), this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
                 Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
                 entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
@@ -281,6 +281,8 @@ public class Object2NodeMapper implements Traceable {
               }
             }
             else {
+              if (!singleLinkData.isNullable())
+                throw new Object2NodeMapper.Exception("Value required for property '" + fieldName + "'.");
               // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
             }
           }
