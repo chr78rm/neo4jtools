@@ -20,13 +20,16 @@ import java.util.List;
 import java.util.Properties;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -215,6 +218,7 @@ public class Object2NodeMapperUnit implements Traceable {
       }
       
       traceAllNodes();
+      checkNodes(1);
       
       object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
@@ -223,6 +227,7 @@ public class Object2NodeMapperUnit implements Traceable {
       }
       
       traceAllNodes();
+      checkNodes(1);
       
       account.setDocuments(null);
       
@@ -233,6 +238,7 @@ public class Object2NodeMapperUnit implements Traceable {
       }
       
       traceAllNodes();
+      checkNodes(2);
     }
     finally {
       tracer.wayout();
@@ -250,6 +256,66 @@ public class Object2NodeMapperUnit implements Traceable {
           RichNode richNode = new RichNode(node);
           richNode.trace(tracer);
         });
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private void checkNodes(int scenarioNr) {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "checkNodes(int scenarioNr)");
+    
+    try {
+      tracer.out().printfIndentln("scenarioNr = %d", scenarioNr);
+      
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        switch(scenarioNr) {
+          case 1: {
+            Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+            Assert.assertTrue("Expected an account node.", accountNode != null);
+            Assert.assertTrue("Expected three outgoing relationships.", accountNode.getDegree(Direction.OUTGOING) == 3);
+            Assert.assertTrue("Expected a single outgoing '" + RESTFulCryptoRelationships.OWNS + "'relationship.", 
+                accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
+            Node endNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
+            Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_RINGS + "' label.", endNode.hasLabel(RESTfulCryptoLabels.KEY_RINGS));
+            Assert.assertTrue("Wrong keyring id.", (int) endNode.getProperty("id")  == 0);
+            Assert.assertTrue("Wrong keyring path.", endNode.getProperty("path").equals("." + File.separator + "store" + File.separator + "theKeystore.jks"));
+            Assert.assertTrue("Expected two outgoing '" + RESTFulCryptoRelationships.HAS + "'relationships.", 
+                accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == 2);
+            accountNode.getRelationships(Direction.OUTGOING, RESTFulCryptoRelationships.HAS)
+                .forEach(relationship -> {
+                  Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.DOCUMENTS + "' label.", relationship.getEndNode().hasLabel(RESTfulCryptoLabels.DOCUMENTS));
+                  Assert.assertTrue("Wrong properties.", 
+                      relationship.getEndNode().hasProperty("id") 
+                          && relationship.getEndNode().hasProperty("title") 
+                          && relationship.getEndNode().hasProperty("creationDate") 
+                          && relationship.getEndNode().hasProperty("type"));
+                });
+          }
+          break;
+          
+          case 2: {
+            Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+            Assert.assertTrue("Expected an account node.", accountNode != null);
+            Assert.assertTrue("Expected three outgoing relationships.", accountNode.getDegree(Direction.OUTGOING) == 1);
+            Assert.assertTrue("Expected a single outgoing '" + RESTFulCryptoRelationships.OWNS + "'relationship.", 
+                accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
+            Node endNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
+            Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_RINGS + "' label.", endNode.hasLabel(RESTfulCryptoLabels.KEY_RINGS));
+            Assert.assertTrue("Wrong keyring id.", (int) endNode.getProperty("id")  == 0);
+            Assert.assertTrue("Wrong keyring path.", endNode.getProperty("path").equals("." + File.separator + "store" + File.separator + "theKeystore.jks"));
+            Assert.assertTrue("Expected no outgoing '" + RESTFulCryptoRelationships.HAS + "'relationships.", 
+                accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == 0);
+          }
+          break;
+            
+          default:
+            Assert.fail("Unknown scenario.");
+            break;
+        }
         transaction.success();
       }
     }
