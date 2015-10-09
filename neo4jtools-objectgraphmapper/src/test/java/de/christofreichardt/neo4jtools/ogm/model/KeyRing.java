@@ -24,7 +24,7 @@ import org.neo4j.graphdb.Direction;
 public class KeyRing {
   @Id
   @Property
-  private final Integer id;
+  private Integer id;
 
   @Property
   private String path;

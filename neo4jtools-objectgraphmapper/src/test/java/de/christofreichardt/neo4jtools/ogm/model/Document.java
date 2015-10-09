@@ -16,7 +16,7 @@ import org.neo4j.graphdb.Direction;
 public class Document {
   @Id
   @Property
-  private final Integer id;
+  private Integer id;
   
   @Property
   private String title;
