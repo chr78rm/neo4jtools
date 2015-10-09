@@ -117,6 +117,9 @@ public class Object2NodeMapperUnit implements Traceable {
         object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         transaction.success();
       }
+      
+      traceAllNodes();
+      checkNodes(0);
     }
     finally {
       tracer.wayout();
@@ -273,6 +276,16 @@ public class Object2NodeMapperUnit implements Traceable {
       
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
         switch(scenarioNr) {
+          case 0: {
+            Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+            Assert.assertTrue("Expected an account node.", accountNode != null);
+            Assert.assertTrue("Expected no outgoing relationships.", accountNode.getDegree(Direction.OUTGOING) == 0);
+            Assert.assertTrue("Wrong property.", accountNode.getProperty("localityName").equals("Rodgau"));
+            Assert.assertTrue("Wrong property.", accountNode.getProperty("stateName").equals("Hessen"));
+            Assert.assertTrue("Wrong property.", accountNode.getProperty("countryCode").equals("DE"));
+          }
+          break;
+            
           case 1: {
             Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
             Assert.assertTrue("Expected an account node.", accountNode != null);
