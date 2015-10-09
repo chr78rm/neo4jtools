@@ -28,6 +28,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.tooling.GlobalGraphOperations;
 
 /**
@@ -49,7 +50,10 @@ public class IdGeneratorUnit implements Traceable {
     tracer.entry("void", IdGeneratorUnit.class, "startDB()");
     
     try {
-      IdGeneratorUnit.graphDatabaseService = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+      IdGeneratorUnit.graphDatabaseService = new GraphDatabaseFactory()
+          .newEmbeddedDatabaseBuilder(DB_PATH)
+          .setConfig(GraphDatabaseSettings.keep_logical_logs, "10 files")
+          .newGraphDatabase();
     }
     finally {
       tracer.wayout();
