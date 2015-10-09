@@ -24,7 +24,7 @@ public class IdGeneratorService implements Traceable {
   final private ExecutorService executorService;
   private Set<Future<IdGenDescription>> futures;
 
-  public IdGeneratorService(GraphDatabaseService graphDatabaseService, String[] entityNames) {
+  public IdGeneratorService(GraphDatabaseService graphDatabaseService, String... entityNames) {
     for (String entityName : entityNames) {
       this.entity2IdGenerator.put(entityName, new IdGenerator(graphDatabaseService, entityName));
     }
