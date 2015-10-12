@@ -203,11 +203,20 @@ public class MyAnnotationProcessor extends AbstractProcessor {
         xmlStreamWriter.writeEndElement();
         
         Id id = propertyElement.getAnnotation(Id.class);
+        GeneratedValue generatedValue = propertyElement.getAnnotation(GeneratedValue.class);
+        if (id == null  &&  generatedValue != null)
+          this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Generated values only for id fields.", propertyElement);
         NodeEntity nodeEntity = propertyElement.getEnclosingElement().getAnnotation(NodeEntity.class);
         if (id != null) {
-          xmlStreamWriter.writeEmptyElement("Index");
+          xmlStreamWriter.writeEmptyElement("PrimaryKey");
           xmlStreamWriter.writeAttribute("label", nodeEntity.label());
-          xmlStreamWriter.writeAttribute("primary", "true");
+          if (generatedValue != null) {
+            if (!"java.lang.Integer".equals(propertyElement.asType().toString()) && !"java.lang.Long".equals(propertyElement.asType().toString()))
+              this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Generated values only for integer fields.", propertyElement);
+            xmlStreamWriter.writeAttribute("generated", "true");
+          }
+          else
+            xmlStreamWriter.writeAttribute("generated", "false");
         }
         xmlStreamWriter.writeEndElement();
       }
