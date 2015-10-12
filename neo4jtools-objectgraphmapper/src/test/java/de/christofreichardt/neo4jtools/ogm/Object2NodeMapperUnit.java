@@ -152,6 +152,31 @@ public class Object2NodeMapperUnit implements Traceable {
   }
   
   @Test
+  public void idIsNull() throws MappingInfo.Exception, Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "idIsNull()");
+    
+    try {
+      Account account = new Account(null);
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      
+      thrown.expect(Object2NodeMapper.Exception.class);
+      thrown.expectMessage("Primary key references null.");
+      
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
   public void nonNullableSingleLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("void", this, "nonNullableSingleLinks()");
