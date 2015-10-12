@@ -1,5 +1,6 @@
 package de.christofreichardt.neo4jtools.ogm.model;
 
+import de.christofreichardt.neo4jtools.apt.GeneratedValue;
 import de.christofreichardt.neo4jtools.apt.Id;
 import de.christofreichardt.neo4jtools.apt.Links;
 import de.christofreichardt.neo4jtools.apt.NodeEntity;
@@ -15,6 +16,7 @@ import org.neo4j.graphdb.Direction;
 public class Role {
   @Id
   @Property
+  @GeneratedValue
   private Integer id;
   
   @Property
