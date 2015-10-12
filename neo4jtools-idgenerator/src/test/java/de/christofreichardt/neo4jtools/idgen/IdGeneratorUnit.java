@@ -22,10 +22,14 @@ import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.factory.GraphDatabaseSettings;
@@ -39,6 +43,9 @@ public class IdGeneratorUnit implements Traceable {
   static public GraphDatabaseService graphDatabaseService;
   final static String DB_PATH = "." + File.separator + "db";
   final private Properties properties;
+  
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   public IdGeneratorUnit(Properties properties) {
     this.properties = properties;
@@ -279,8 +286,22 @@ public class IdGeneratorUnit implements Traceable {
         }
       });
       
-      IdGeneratorService idGeneratorService = new IdGeneratorService(IdGeneratorUnit.graphDatabaseService, ENTITY_NAMES);
-      idGeneratorService.start();
+      try {
+        IdGeneratorService.getInstance().init(IdGeneratorUnit.graphDatabaseService, ENTITY_NAMES);
+        IdGeneratorService.getInstance().start();
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
+
+        try (Transaction transaction = IdGeneratorUnit.graphDatabaseService.beginTx()) {
+          ResourceIterator<Node> nodes = IdGeneratorUnit.graphDatabaseService.findNodes(IdGenLabels.ID_GENERATOR);
+          nodes.forEachRemaining(node -> {
+            tracer.out().printfIndentln("Delete: node[%d].", node.getId());
+            node.delete();
+          });
+          transaction.success();
+        }
+      }
       
       class IdConsumer implements Callable<Long> {
         final String name;
@@ -289,11 +310,14 @@ public class IdGeneratorUnit implements Traceable {
         }
         @Override
         public Long call() throws Exception {
-          return idGeneratorService.getNextId(this.name);
+          return IdGeneratorService.getInstance().getNextId(this.name);
         }
       }
       
       try {
+        IdGeneratorService.getInstance().init(IdGeneratorUnit.graphDatabaseService, ENTITY_NAMES);
+        IdGeneratorService.getInstance().start();
+        
         IdConsumer[] idConsumers = new IdConsumer[ENTITY_NAMES.length];
         for (int i = 0; i < ENTITY_NAMES.length; i++) {
           idConsumers[i] = new IdConsumer(ENTITY_NAMES[i]);
@@ -327,7 +351,48 @@ public class IdGeneratorUnit implements Traceable {
         tracer.out().printfIndentln("terminated = %b", terminated);
       }
       finally {
-        idGeneratorService.shutDown();
+        IdGeneratorService.getInstance().shutDown();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void unInitializedService() {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "unInitializedService()");
+    
+    try {
+      thrown.expect(IllegalStateException.class);
+      thrown.expectMessage("Service hasn't been initialized yet.");
+      
+      IdGeneratorService.getInstance().start();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void unknownEntity() throws InterruptedException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "exit()");
+    
+    try {
+      thrown.expect(IllegalArgumentException.class);
+      thrown.expectMessage("Unknown entity name");
+      
+      final String[] ENTITY_NAMES = {"Test-0", "Test-1", "Test-2"};
+      
+      try {
+        IdGeneratorService.getInstance().init(IdGeneratorUnit.graphDatabaseService, ENTITY_NAMES);
+        IdGeneratorService.getInstance().start();
+        IdGeneratorService.getInstance().getNextId("UNKNOWN_ENTITY");
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
       }
     }
     finally {
