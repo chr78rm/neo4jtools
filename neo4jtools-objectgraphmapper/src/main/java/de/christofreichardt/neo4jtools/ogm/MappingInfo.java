@@ -62,8 +62,7 @@ public class MappingInfo implements Traceable {
   final private Map<Element, Map<String, PropertyData>> fieldMap = new HashMap<>();
   final private Map<Element, Map<String, LinkData>> linkMap = new HashMap<>();
   final private Map<Element, Map<String, SingleLinkData>> singleLinkMap = new HashMap<>();
-  final private Map<Element, String> primaryIndexMap = new HashMap<>();
-  final private Map<Element, String> idFieldMap = new HashMap<>();
+  final private Map<Element, PrimaryKeyData> primaryKeyMap = new HashMap<>();
   final private Map<Element, String> versionFieldMap = new HashMap<>();
 
   public MappingInfo() throws MappingInfo.Exception {
@@ -150,12 +149,15 @@ public class MappingInfo implements Traceable {
         }
         
         // TODO: sanity checks 
-        org.w3c.dom.Node indexNode = (org.w3c.dom.Node) xPath.evaluate("Property/Index[@primary='true']", entityElement, XPathConstants.NODE);
-        if (indexNode != null)
-          this.primaryIndexMap.put(entityElement, ((Element) indexNode).getAttribute("label"));
-        org.w3c.dom.Node idFieldNode = (org.w3c.dom.Node) xPath.evaluate("Property/Index[@primary='true']/../Field", entityElement, XPathConstants.NODE);
-        if (idFieldNode != null)
-          this.idFieldMap.put(entityElement, ((Element) idFieldNode).getAttribute("name"));
+        org.w3c.dom.Node indexNode = (org.w3c.dom.Node) xPath.evaluate("Property/PrimaryKey", entityElement, XPathConstants.NODE);
+        if (indexNode != null) {
+          String label = ((Element) indexNode).getAttribute("label");
+          String fieldName = (String) xPath.evaluate("../Field/@name", indexNode, XPathConstants.STRING);
+          boolean generated = "true".equals(((Element) indexNode).getAttribute("generated"));
+          PrimaryKeyData primaryKeyData = new PrimaryKeyData(label, fieldName, generated);
+          this.primaryKeyMap.put(entityElement, primaryKeyData);
+        }
+        
         org.w3c.dom.Node versionFieldNode = (org.w3c.dom.Node) xPath.evaluate("Property[@version='true']/Field", entityElement, XPathConstants.NODE);
         if (versionFieldNode != null)
           this.versionFieldMap.put(entityElement, ((Element) versionFieldNode).getAttribute("name"));
@@ -364,7 +366,7 @@ public class MappingInfo implements Traceable {
     return combinedSingleLinkSet;
   }
   
-  public String getPrimaryIndexName(Class<?> entityClass) {
+  public PrimaryKeyData getPrimaryKeyMapping(Class<?> entityClass) {
     if (!this.entityMap.containsKey(entityClass.getName()))
       throw new IllegalArgumentException("Unknown class: '" + entityClass.getName() + "'.");
 
@@ -373,27 +375,11 @@ public class MappingInfo implements Traceable {
       String superClassName = entityElement.getAttribute("isSubClassOf");
       entityElement = this.entityMap.get(superClassName);
     }
-
-    if (!this.primaryIndexMap.containsKey(entityElement))
+    
+    if (!this.primaryKeyMap.containsKey(entityElement))
       throw new IllegalArgumentException("No primary index available for '" + entityClass.getName() + "'");
 
-    return this.primaryIndexMap.get(entityElement);
-  }
-  
-  public String getIdFieldName(Class<?> entityClass) {
-    if (!this.entityMap.containsKey(entityClass.getName()))
-      throw new IllegalArgumentException("Unknown class: '" + entityClass.getName() + "'.");
-
-    Element entityElement = this.entityMap.get(entityClass.getName());
-    while (entityElement.hasAttribute("isSubClassOf")) {
-      String superClassName = entityElement.getAttribute("isSubClassOf");
-      entityElement = this.entityMap.get(superClassName);
-    }
-
-    if (!this.idFieldMap.containsKey(entityElement))
-      throw new IllegalArgumentException("No id field available for '" + entityClass.getName() + "'");
-
-    return this.idFieldMap.get(entityElement);
+    return this.primaryKeyMap.get(entityElement);
   }
   
   public String getVersionFieldName(Class<?> entityClass) {

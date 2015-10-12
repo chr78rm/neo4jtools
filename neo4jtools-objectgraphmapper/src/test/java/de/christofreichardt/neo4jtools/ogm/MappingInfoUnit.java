@@ -46,9 +46,10 @@ public class MappingInfoUnit implements Traceable {
       Set<Class<?>> mappedEntities = mappingInfo.getMappedEntities();
       mappedEntities.forEach(mappedEntity -> {
         tracer.out().printfIndentln("--> mappedEntity = %s", mappedEntity.getName());
-        tracer.out().printfIndentln("index = %s", mappingInfo.getPrimaryIndexName(mappedEntity));
-        String idFieldName = mappingInfo.getIdFieldName(mappedEntity);
-        tracer.out().printfIndentln("idField = %s", idFieldName);
+        tracer.out().printfIndentln("label = %s", mappingInfo.getPrimaryKeyMapping(mappedEntity).getLabel());
+        String idFieldName = mappingInfo.getPrimaryKeyMapping(mappedEntity).getFieldName();
+        boolean generated = mappingInfo.getPrimaryKeyMapping(mappedEntity).isGenerated();
+        tracer.out().printfIndentln("idField = %s, generated = %b", idFieldName, generated);
         tracer.out().printfIndentln("idProperty = %s", mappingInfo.getPropertyMappingForField(idFieldName, mappedEntity));
         
         Set<Map.Entry<String, PropertyData>> propertyMappings = mappingInfo.getPropertyMappings(mappedEntity);

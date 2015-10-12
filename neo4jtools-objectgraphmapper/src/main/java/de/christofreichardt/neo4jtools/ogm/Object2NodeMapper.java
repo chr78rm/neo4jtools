@@ -60,7 +60,7 @@ public class Object2NodeMapper implements Traceable {
     this.processingEntityIds2NodeMap = processedEntityIds2NodeMap;
     if (!this.processingEntityIds2NodeMap.containsKey(this.entityClass))
       this.processingEntityIds2NodeMap.put(this.entityClass, new HashMap<>());
-    this.label = this.mappingInfo.getPrimaryIndexName(this.entityClass);
+    this.label = this.mappingInfo.getPrimaryKeyMapping(this.entityClass).getLabel();
   }
 
   public <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> 
@@ -70,7 +70,7 @@ public class Object2NodeMapper implements Traceable {
     
     try {
       try {
-        String idFieldName = this.mappingInfo.getIdFieldName(this.entityClass);
+        String idFieldName = this.mappingInfo.getPrimaryKeyMapping(this.entityClass).getFieldName();
         Field idField = this.entityClass.getDeclaredField(idFieldName);
         idField.setAccessible(true);
         Object primaryKeyValue = idField.get(this.entity);
@@ -177,7 +177,7 @@ public class Object2NodeMapper implements Traceable {
             
             Collection<?> linkedEntities = (Collection<?>) linkField.get(this.entity);
             if (linkedEntities != null) {
-              String idFieldName = this.mappingInfo.getIdFieldName(linkedEntityClass);
+              String idFieldName = this.mappingInfo.getPrimaryKeyMapping(linkedEntityClass).getFieldName();
               Field idField = linkedEntityClass.getDeclaredField(idFieldName);
               idField.setAccessible(true);
               
@@ -263,7 +263,7 @@ public class Object2NodeMapper implements Traceable {
             if (cell != null  &&  cell.getEntity() != null) {
               tracer.out().printfIndentln("linkedEntity = %s", cell.getEntity());
               
-              String idFieldName = this.mappingInfo.getIdFieldName(linkedEntityClass);
+              String idFieldName = this.mappingInfo.getPrimaryKeyMapping(linkedEntityClass).getFieldName();
               Field idField = linkedEntityClass.getDeclaredField(idFieldName);
               idField.setAccessible(true);
               Object primaryKey = idField.get(cell.getEntity());
