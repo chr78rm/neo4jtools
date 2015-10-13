@@ -10,6 +10,7 @@ import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.LogLevel;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import de.christofreichardt.neo4jtools.idgen.IdGeneratorService;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashMap;
@@ -73,9 +74,7 @@ public class Object2NodeMapper implements Traceable {
         String idFieldName = this.mappingInfo.getPrimaryKeyMapping(this.entityClass).getFieldName();
         Field idField = this.entityClass.getDeclaredField(idFieldName);
         idField.setAccessible(true);
-        Object primaryKeyValue = idField.get(this.entity);
-        if (primaryKeyValue == null)
-          throw new Object2NodeMapper.Exception("Primary key references null.");
+        Object primaryKeyValue = handleIdField(this.entityClass, this.entity, idField);
         String idPropertyKey = this.mappingInfo.getPropertyMappingForField(idFieldName, this.entityClass).getName();
         
         tracer.out().printfIndentln("idFieldName[%s] = %s", idFieldName, primaryKeyValue);
@@ -97,7 +96,7 @@ public class Object2NodeMapper implements Traceable {
         
         return entityNode;
       }
-      catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+      catch (NoSuchFieldException | SecurityException | IllegalArgumentException ex) {
         throw new Object2NodeMapper.Exception("Problems when mapping the entity.", ex);
       }
     }
@@ -184,17 +183,14 @@ public class Object2NodeMapper implements Traceable {
               for (Object linkedEntity : linkedEntities) {
                 tracer.out().printfIndentln("linkedEntity = %s", linkedEntity);
 
-                Object primaryKey = idField.get(linkedEntity);
-                if (primaryKey == null)
-                  throw new Object2NodeMapper.Exception("Primary key is null.");
-
-                if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
+                Object primaryKeyValue = handleIdField(linkedEntityClass, linkedEntity, idField);
+                if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKeyValue)) {
                   Object2NodeMapper object2NodeMapper = new Object2NodeMapper(linkedEntity, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
                   Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
                   entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
                 }
                 else {
-                  Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
+                  Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
                   entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
                 }
               }
@@ -209,7 +205,7 @@ public class Object2NodeMapper implements Traceable {
           throw new Object2NodeMapper.Exception("Invalid mapping definition.", ex);
         }
         catch (IllegalAccessException ex) {
-          throw new Error(ex); // should be impossible since the field has been made accessible
+          throw new Error(ex); // should be impossible since the fields have been made accessible
         }
       }
       
@@ -266,17 +262,14 @@ public class Object2NodeMapper implements Traceable {
               String idFieldName = this.mappingInfo.getPrimaryKeyMapping(linkedEntityClass).getFieldName();
               Field idField = linkedEntityClass.getDeclaredField(idFieldName);
               idField.setAccessible(true);
-              Object primaryKey = idField.get(cell.getEntity());
-              if (primaryKey == null)
-                throw new Object2NodeMapper.Exception("Primary key is null.");
-              
-              if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKey)) {
+              Object primaryKeyValue = handleIdField(linkedEntityClass, cell.getEntity(), idField);
+              if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKeyValue)) {
                 Object2NodeMapper object2NodeMapper = new Object2NodeMapper(cell.getEntity(), this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
                 Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
                 entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
               else {
-                Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKey);
+                Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
                 entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
             }
@@ -303,6 +296,36 @@ public class Object2NodeMapper implements Traceable {
       
   private boolean followSingleLink(Field singleLinkField, SingleLinkData singleLinkData) {
     return singleLinkData.getDirection() == Direction.OUTGOING;
+  }
+  
+  private Object handleIdField(Class<?> entityClass, Object entity, Field idField) throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("Object", this, "handleIdField(Class<?> linkedEntityClass, Object linkedEntity, Field idField)");
+    
+    try {
+      try {
+        Object primaryKey = idField.get(entity);
+        if (primaryKey == null) {
+          if (this.mappingInfo.getPrimaryKeyMapping(entityClass).isGenerated() == false) {
+            throw new Object2NodeMapper.Exception("Primary key is null.");
+          }
+          
+          primaryKey = IdGeneratorService.getInstance().getNextId(entityClass.getName());
+          idField.set(entity, primaryKey);
+        }
+        
+        return primaryKey;
+      }
+      catch (InterruptedException ex) {
+        throw new Object2NodeMapper.Exception("Interrupted when accessing generated id.", ex);
+      }
+      catch (IllegalAccessException ex) {
+        throw new RuntimeException(ex); // should be impossible since the field has been made accessible
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
   }
 
   @Override
