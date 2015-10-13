@@ -26,7 +26,7 @@ public class KeyRing {
   @Id
   @Property
   @GeneratedValue
-  private Integer id;
+  private Long id;
 
   @Property
   private String path;
@@ -40,11 +40,11 @@ public class KeyRing {
   @SingleLink(direction = Direction.INCOMING, type = "OWNS")
   private Cell<Account> account;
   
-  public KeyRing(Integer id) {
+  public KeyRing(Long id) {
     this.id = id;
   }
 
-  public Integer getId() {
+  public Long getId() {
     return id;
   }
 

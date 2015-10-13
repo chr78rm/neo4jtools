@@ -17,7 +17,7 @@ public class Role {
   @Id
   @Property
   @GeneratedValue
-  private Integer id;
+  private Long id;
   
   @Property
   private String name;

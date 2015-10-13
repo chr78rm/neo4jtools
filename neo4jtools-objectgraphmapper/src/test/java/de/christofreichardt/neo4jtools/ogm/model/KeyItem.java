@@ -20,7 +20,7 @@ public class KeyItem {
   @Id
   @Property
   @GeneratedValue
-  private Integer id;
+  private Long id;
 
   @Property
   private String algorithm;
@@ -31,11 +31,11 @@ public class KeyItem {
   @SingleLink(direction = Direction.INCOMING, type = "CONTAINS")
   private Cell<KeyRing> keyRing;
 
-  public KeyItem(Integer id) {
+  public KeyItem(Long id) {
     this.id = id;
   }
 
-  public Integer getId() {
+  public Long getId() {
     return id;
   }
 

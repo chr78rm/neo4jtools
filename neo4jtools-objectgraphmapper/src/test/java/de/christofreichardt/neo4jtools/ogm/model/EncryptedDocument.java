@@ -9,7 +9,7 @@ import de.christofreichardt.neo4jtools.apt.NodeEntity;
 @NodeEntity(label = "DOCUMENTS")
 public class EncryptedDocument extends Document {
 
-  public EncryptedDocument(Integer id) {
+  public EncryptedDocument(Long id) {
     super(id);
   }
 }

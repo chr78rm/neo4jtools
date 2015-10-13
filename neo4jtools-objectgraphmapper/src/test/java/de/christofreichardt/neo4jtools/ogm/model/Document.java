@@ -18,7 +18,7 @@ public class Document {
   @Id
   @Property
   @GeneratedValue
-  private Integer id;
+  private Long id;
   
   @Property
   private String title;
@@ -32,12 +32,19 @@ public class Document {
   @SingleLink(direction = Direction.INCOMING, type = "OWNS")
   private Cell<Account> account;
 
-  public Document(Integer id) {
+  public Document() {
+  }
+
+  public Document(Long id) {
     this.id = id;
   }
 
-  public Integer getId() {
+  public Long getId() {
     return id;
+  }
+
+  public void setId(Long id) {
+    this.id = id;
   }
 
   public String getTitle() {

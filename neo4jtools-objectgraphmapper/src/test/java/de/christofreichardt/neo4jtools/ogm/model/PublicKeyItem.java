@@ -9,7 +9,7 @@ import de.christofreichardt.neo4jtools.apt.NodeEntity;
 @NodeEntity(label = "KEY_ITEMS")
 public class PublicKeyItem extends KeyItem {
 
-  public PublicKeyItem(Integer id) {
+  public PublicKeyItem(Long id) {
     super(id);
   }
 }
