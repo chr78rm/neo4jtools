@@ -3,6 +3,7 @@ package de.christofreichardt.neo4jtools.ogm;
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import de.christofreichardt.neo4jtools.idgen.IdGeneratorService;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Account1;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
@@ -29,7 +30,6 @@ import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
@@ -163,7 +163,7 @@ public class Object2NodeMapperUnit implements Traceable {
       account.setStateName("Hessen");
       
       thrown.expect(Object2NodeMapper.Exception.class);
-      thrown.expectMessage("Primary key references null.");
+      thrown.expectMessage("Primary key is null.");
       
       Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
@@ -214,10 +214,10 @@ public class Object2NodeMapperUnit implements Traceable {
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
       account.setStateName("Hessen");
-      KeyRing keyRing = new KeyRing(0);
+      KeyRing keyRing = new KeyRing(0L);
       keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
       List<KeyItem> keyItems = new ArrayList<>();
-      KeyItem keyItem = new KeyItem(0);
+      KeyItem keyItem = new KeyItem(0L);
       keyItem.setKeyRing(keyRing);
       keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
       keyItem.setCreationDate(formattedTime);
@@ -225,13 +225,13 @@ public class Object2NodeMapperUnit implements Traceable {
       keyRing.setKeyItems(keyItems);
       account.setKeyRing(keyRing);
       List<Document> documents = new ArrayList<>();
-      Document document = new Document(0);
+      Document document = new Document(0L);
       document.setAccount(account);
       document.setTitle("Testdocument-1");
       document.setType("pdf");
       document.setCreationDate(formattedTime);
       documents.add(document);
-      document = new Document(1);
+      document = new Document(1L);
       document.setAccount(account);
       document.setTitle("Testdocument-2");
       document.setType("pdf");
@@ -267,6 +267,66 @@ public class Object2NodeMapperUnit implements Traceable {
       
       traceAllNodes();
       checkNodes(2);
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void automaticIds() throws MappingInfo.Exception, Object2NodeMapper.Exception, InterruptedException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "automaticIds()");
+    
+    try {
+      try {
+        IdGeneratorService.getInstance().init(Object2NodeMapperUnit.graphDatabaseService, Account.class.getName(), Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().start();
+        
+        Account account = new Account("Tester");
+        account.setCountryCode("DE");
+        account.setLocalityName("Rodgau");
+        account.setStateName("Hessen");
+        
+        LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+        String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        final int TEST_DOCUMENTS = 10;
+        List<Document> documents = new ArrayList<>();
+        for (int i = 0; i < TEST_DOCUMENTS; i++) {
+          Document document = new Document();
+          document.setAccount(account);
+          document.setTitle("Testdocument-" + i);
+          document.setType("pdf");
+          document.setCreationDate(formattedTime);
+          documents.add(document);
+        }
+        account.setDocuments(documents);
+        
+        KeyRing keyRing = new KeyRing();
+        keyRing.setAccount(account);
+        keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+        account.setKeyRing(keyRing);
+        
+        keyRing = new KeyRing();
+        keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+        
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+        try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+          object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+          transaction.success();
+        }
+        
+        object2NodeMapper = new Object2NodeMapper(keyRing, Object2NodeMapperUnit.graphDatabaseService);
+        try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+          object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+          transaction.success();
+        }
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
+      }
+        
+      traceAllNodes();
     }
     finally {
       tracer.wayout();
@@ -319,7 +379,7 @@ public class Object2NodeMapperUnit implements Traceable {
                 accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
             Node endNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
             Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_RINGS + "' label.", endNode.hasLabel(RESTfulCryptoLabels.KEY_RINGS));
-            Assert.assertTrue("Wrong keyring id.", (int) endNode.getProperty("id")  == 0);
+            Assert.assertTrue("Wrong keyring id.", (long) endNode.getProperty("id")  == 0);
             Assert.assertTrue("Wrong keyring path.", endNode.getProperty("path").equals("." + File.separator + "store" + File.separator + "theKeystore.jks"));
             Assert.assertTrue("Expected two outgoing '" + RESTFulCryptoRelationships.HAS + "'relationships.", 
                 accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == 2);
@@ -343,7 +403,7 @@ public class Object2NodeMapperUnit implements Traceable {
                 accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
             Node endNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
             Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_RINGS + "' label.", endNode.hasLabel(RESTfulCryptoLabels.KEY_RINGS));
-            Assert.assertTrue("Wrong keyring id.", (int) endNode.getProperty("id")  == 0);
+            Assert.assertTrue("Wrong keyring id.", (long) endNode.getProperty("id")  == 0);
             Assert.assertTrue("Wrong keyring path.", endNode.getProperty("path").equals("." + File.separator + "store" + File.separator + "theKeystore.jks"));
             Assert.assertTrue("Expected no outgoing '" + RESTFulCryptoRelationships.HAS + "'relationships.", 
                 accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == 0);
