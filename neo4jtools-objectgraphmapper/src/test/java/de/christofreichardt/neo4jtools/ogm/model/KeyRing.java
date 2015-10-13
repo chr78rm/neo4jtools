@@ -39,6 +39,9 @@ public class KeyRing {
   
   @SingleLink(direction = Direction.INCOMING, type = "OWNS")
   private Cell<Account> account;
+
+  public KeyRing() {
+  }
   
   public KeyRing(Long id) {
     this.id = id;
