@@ -211,8 +211,8 @@ public class MyAnnotationProcessor extends AbstractProcessor {
           xmlStreamWriter.writeEmptyElement("PrimaryKey");
           xmlStreamWriter.writeAttribute("label", nodeEntity.label());
           if (generatedValue != null) {
-            if (!"java.lang.Integer".equals(propertyElement.asType().toString()) && !"java.lang.Long".equals(propertyElement.asType().toString()))
-              this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Generated values only for integer fields.", propertyElement);
+            if (!"java.lang.Long".equals(propertyElement.asType().toString()))
+              this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Generated id values only for Long fields.", propertyElement);
             xmlStreamWriter.writeAttribute("generated", "true");
           }
           else
