@@ -62,7 +62,7 @@ public class IdGeneratorService implements Traceable {
     }
   }
   
-  synchronized void init(GraphDatabaseService graphDatabaseService, String... entityNames) {
+  synchronized public void init(GraphDatabaseService graphDatabaseService, String... entityNames) {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("void", this, "init(GraphDatabaseService graphDatabaseService, String... entityNames)");
     
