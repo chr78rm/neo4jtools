@@ -12,5 +12,5 @@ import org.neo4j.graphdb.RelationshipType;
  * @author developer
  */
 public enum RESTFulCryptoRelationships implements RelationshipType {
-  OWNS, FULFILLS, HAS, CONTAINS
+  OWNS, FULFILLS, HAS, CONTAINS, BELONGS_TO
 }
