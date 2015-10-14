@@ -69,7 +69,7 @@ public class MyField {
             break;
           }
           else {
-            MyClass myClass = new MyClass(clazz);
+            ReflectedClass myClass = new ReflectedClass(clazz);
             if (myClass.isImplementing(anInterface)) {
               flag = true;
               break;
