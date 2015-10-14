@@ -7,15 +7,18 @@ package de.christofreichardt.neo4jtools.ogm;
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.Optional;
 
 /**
  *
  * @author Developer
  */
-public class MyClass implements Traceable {
+public class ReflectedClass implements Traceable {
   final private Class<?> clazz;
 
-  public MyClass(Class<?> clazz) {
+  public ReflectedClass(Class<?> clazz) {
     this.clazz = clazz;
   }
   
@@ -63,7 +66,7 @@ public class MyClass implements Traceable {
           break;
         }
         else {
-          MyClass myClass = new MyClass(clazz);
+          ReflectedClass myClass = new ReflectedClass(clazz);
           if (myClass.isImplementing(anInterface)) {
             flag = true;
             break;
@@ -72,6 +75,35 @@ public class MyClass implements Traceable {
       }
       
       return flag;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  public Field getDeclaredField(String fieldName) throws NoSuchFieldException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("Field", this, "getDeclaredField(String fieldName)");
+
+    try {
+      tracer.out().printfIndentln("fieldName = %s", fieldName);
+      
+      Class<?> currentClazz = this.clazz;
+      Field field = null;
+      do {
+        Field[] declaredFields = currentClazz.getDeclaredFields();
+        Optional<Field> optionalField = Arrays.asList(declaredFields).stream().filter(declaredField -> declaredField.getName().equals(fieldName)).findFirst();
+        if (optionalField.isPresent()) {
+          field = optionalField.get();
+          break;
+        }
+        currentClazz = currentClazz.getSuperclass();
+      } while(currentClazz != null);
+      
+      if (field == null)
+        throw new NoSuchFieldException(fieldName);
+      
+      return field;
     }
     finally {
       tracer.wayout();
