@@ -44,6 +44,7 @@ public class Object2NodeMapper implements Traceable {
   final private Class<?> entityClass;
   final private Map<Class<?>, Map<Object, Node>> processingEntityIds2NodeMap;
   final private String label;
+  final private ReflectedClass reflectedClass;
 
   public Object2NodeMapper(Object entity, GraphDatabaseService graphDatabaseService) throws MappingInfo.Exception {
     this(entity, new MappingInfo(), graphDatabaseService);
@@ -62,6 +63,7 @@ public class Object2NodeMapper implements Traceable {
     if (!this.processingEntityIds2NodeMap.containsKey(this.entityClass))
       this.processingEntityIds2NodeMap.put(this.entityClass, new HashMap<>());
     this.label = this.mappingInfo.getPrimaryKeyMapping(this.entityClass).getLabel();
+    this.reflectedClass = new ReflectedClass(this.entityClass);
   }
 
   public <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> 
@@ -70,9 +72,11 @@ public class Object2NodeMapper implements Traceable {
     tracer.entry("Node", this, "map(Class<S> labels, Class<T> relationshipTypes)");
     
     try {
+      tracer.out().printfIndentln("Mapping %s ...", this.entity);
+      
       try {
         String idFieldName = this.mappingInfo.getPrimaryKeyMapping(this.entityClass).getFieldName();
-        Field idField = this.entityClass.getDeclaredField(idFieldName);
+        Field idField = this.reflectedClass.getDeclaredField(idFieldName);
         idField.setAccessible(true);
         Object primaryKeyValue = handleIdField(this.entityClass, this.entity, idField);
         String idPropertyKey = this.mappingInfo.getPropertyMappingForField(idFieldName, this.entityClass).getName();
@@ -115,7 +119,7 @@ public class Object2NodeMapper implements Traceable {
         try {
           String fieldName = propertyMapping.getKey();
           PropertyData propertyData = propertyMapping.getValue();
-          Field propertyField = this.entityClass.getDeclaredField(fieldName);
+          Field propertyField = this.reflectedClass.getDeclaredField(fieldName);
           propertyField.setAccessible(true);
           Object property = propertyField.get(this.entity);
           
@@ -234,7 +238,7 @@ public class Object2NodeMapper implements Traceable {
         tracer.out().printfIndentln("singleLinkMapping[%s] = %s", fieldName, singleLinkData);
         
         try {
-          Field singleLinkField = this.entityClass.getDeclaredField(fieldName);
+          Field singleLinkField = this.reflectedClass.getDeclaredField(fieldName);
           singleLinkField.setAccessible(true);
           
           if (followSingleLink(singleLinkField, singleLinkData)) {
