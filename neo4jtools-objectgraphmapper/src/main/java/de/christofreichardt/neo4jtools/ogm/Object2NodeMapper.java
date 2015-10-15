@@ -163,7 +163,7 @@ public class Object2NodeMapper implements Traceable {
         tracer.out().printfIndentln("linkMapping[%s] = %s", fieldName, linkData);
         
         try {
-          Field linkField = this.entityClass.getDeclaredField(fieldName);
+          Field linkField = this.reflectedClass.getDeclaredField(fieldName);
           linkField.setAccessible(true);
           if (followLinks(linkField, linkData)) {
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
