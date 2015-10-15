@@ -87,6 +87,9 @@ public class Object2NodeMapper implements Traceable {
         if (entityNode == null) {
           tracer.out().printfIndentln("Saving ...");
           entityNode = this.graphDatabaseService.createNode(Enum.valueOf(labels, this.label));
+          for (String mappedLabel : this.mappingInfo.getLabels(this.entityClass)) {
+            entityNode.addLabel(Enum.valueOf(labels, mappedLabel));
+          }
         }
         else
           tracer.out().printfIndentln("Merging ...");
