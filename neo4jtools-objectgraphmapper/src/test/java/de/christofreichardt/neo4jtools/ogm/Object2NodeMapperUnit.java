@@ -7,6 +7,7 @@ import de.christofreichardt.neo4jtools.idgen.IdGenLabels;
 import de.christofreichardt.neo4jtools.idgen.IdGeneratorService;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Account1;
+import de.christofreichardt.neo4jtools.ogm.model.Account2;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem1;
@@ -383,6 +384,57 @@ public class Object2NodeMapperUnit implements Traceable {
         
       traceAllNodes();
       checkNodes(4);
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void inheritedMapping() throws MappingInfo.Exception, Object2NodeMapper.Exception, NoSuchFieldException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "inheritedMapping()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account account = new Account2("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      KeyRing keyRing = new KeyRing(0L);
+      keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+      List<KeyItem> keyItems = new ArrayList<>();
+      KeyItem keyItem = new KeyItem(0L);
+      keyItem.setKeyRing(keyRing);
+      keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem.setCreationDate(formattedTime);
+      keyItems.add(keyItem);
+      keyRing.setKeyItems(keyItems);
+      account.setKeyRing(keyRing);
+      List<Document> documents = new ArrayList<>();
+      Document document = new Document(0L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-1");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      documents.add(document);
+      document = new Document(1L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-2");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      documents.add(document);
+      account.setDocuments(documents);
+      
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+        
+      traceAllNodes();
     }
     finally {
       tracer.wayout();
