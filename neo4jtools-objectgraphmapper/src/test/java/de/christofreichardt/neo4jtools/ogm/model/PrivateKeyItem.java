@@ -6,7 +6,7 @@ import de.christofreichardt.neo4jtools.apt.NodeEntity;
  *
  * @author Christof Reichardt
  */
-@NodeEntity(label = "KEY_ITEMS")
+@NodeEntity(label = "PRIVATE_KEY_ITEMS")
 public class PrivateKeyItem extends KeyItem {
 
   public PrivateKeyItem(Long id) {

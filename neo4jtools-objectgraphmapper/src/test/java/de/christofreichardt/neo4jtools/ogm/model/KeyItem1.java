@@ -12,7 +12,7 @@ import de.christofreichardt.neo4jtools.ogm.Cell;
 import de.christofreichardt.neo4jtools.ogm.Wrapper;
 import org.neo4j.graphdb.Direction;
 
-@NodeEntity(label = "KEY_ITEMS")
+@NodeEntity(label = "KEY_ITEM1S")
 public class KeyItem1 extends KeyItem {
   @SingleLink(direction = Direction.OUTGOING, type = "BELONGS_TO")
   private Cell<Account> account;

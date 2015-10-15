@@ -19,7 +19,7 @@ import org.neo4j.graphdb.Direction;
  *
  * @author Christof Reichardt
  */
-@NodeEntity(label = "ACCOUNTS")
+@NodeEntity(label = "ACCOUNT1S")
 public class Account1 {
   @Id
   @Property
