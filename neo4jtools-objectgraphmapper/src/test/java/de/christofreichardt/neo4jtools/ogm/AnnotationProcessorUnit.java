@@ -113,12 +113,12 @@ public class AnnotationProcessorUnit implements Traceable {
   }
   
   @Test
-  public void indices() throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+  public void topLabels() throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("void", this, "indices()");
+    tracer.entry("void", this, "topLabels()");
     
     try {
-      NodeList nodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity/:Property/:Index/@label"
+      NodeList nodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity/:Property/:PrimaryKey/@label"
           , this.mappingDocument.getDocumentElement()
           , XPathConstants.NODESET);
       
