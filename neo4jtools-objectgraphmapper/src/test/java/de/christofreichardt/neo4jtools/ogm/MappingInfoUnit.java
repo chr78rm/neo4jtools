@@ -3,6 +3,7 @@ package de.christofreichardt.neo4jtools.ogm;
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -43,10 +44,18 @@ public class MappingInfoUnit implements Traceable {
       
       tracer.out().println();
       
-      Set<Class<?>> mappedEntities = mappingInfo.getMappedEntities();
+      Set<Class<?>> mappedEntities = mappingInfo.getMappedEntityClasses();
       mappedEntities.forEach(mappedEntity -> {
         tracer.out().printfIndentln("--> mappedEntity = %s", mappedEntity.getName());
-        tracer.out().printfIndentln("label = %s", mappingInfo.getPrimaryKeyMapping(mappedEntity).getLabel());
+        tracer.out().printfIndentln("topLabel = %s", mappingInfo.getPrimaryKeyMapping(mappedEntity).getLabel());
+        tracer.out().printIndent("labels: ");
+        Iterator<String> iter = mappingInfo.getLabels(mappedEntity).iterator();
+        while (iter.hasNext()) {
+          tracer.out().print(iter.next());
+          if (iter.hasNext())
+            tracer.out().print(", ");
+        }
+        tracer.out().println();
         String idFieldName = mappingInfo.getPrimaryKeyMapping(mappedEntity).getFieldName();
         boolean generated = mappingInfo.getPrimaryKeyMapping(mappedEntity).isGenerated();
         tracer.out().printfIndentln("idField = %s, generated = %b", idFieldName, generated);
