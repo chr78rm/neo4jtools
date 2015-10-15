@@ -39,6 +39,7 @@ import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.neo4j.graphdb.Direction;
+import org.neo4j.graphdb.Label;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -64,6 +65,7 @@ public class MappingInfo implements Traceable {
   final private Map<Element, Map<String, SingleLinkData>> singleLinkMap = new HashMap<>();
   final private Map<Element, PrimaryKeyData> primaryKeyMap = new HashMap<>();
   final private Map<Element, String> versionFieldMap = new HashMap<>();
+  final private Map<Label, Class<?>> labelMap = new HashMap<>();
 
   public MappingInfo() throws MappingInfo.Exception {
     try {
@@ -87,21 +89,31 @@ public class MappingInfo implements Traceable {
     }
   }
   
-  private void readMapping(org.w3c.dom.Document mappingDocument) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException, ClassNotFoundException {
+  private void readMapping(org.w3c.dom.Document mappingDocument) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException, ClassNotFoundException, MappingInfo.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("void", this, "readMapping()");
 
     try {
       XPath xPath = XPathFactory.newInstance().newXPath();
       
+      Set<String> labels = new HashSet<>();
       NodeList nodeEntityNodes = (NodeList) xPath.evaluate("/Mapping/NodeEntity", mappingDocument.getDocumentElement(), XPathConstants.NODESET);
       for (int i=0; i<nodeEntityNodes.getLength(); i++) {
-        String className = ((Element) nodeEntityNodes.item(i)).getAttribute("className");
+        Element entityElement = (Element) nodeEntityNodes.item(i);
+        String className = entityElement.getAttribute("className");
         
         tracer.out().printfIndentln("className = %s", className);
         
         Class.forName(className);
-        this.entityMap.put(className, (Element) nodeEntityNodes.item(i));
+        this.entityMap.put(className, entityElement);
+        String label = entityElement.getAttribute("label");
+        
+        tracer.out().printfIndentln("label = %s", label);
+        
+        if (!labels.contains(label))
+          labels.add(label);
+        else
+          throw new MappingInfo.Exception("Duplicate label: '" + label + "'.");
       }
       
       for (Element entityElement : this.entityMap.values()) {
@@ -291,7 +303,7 @@ public class MappingInfo implements Traceable {
     }
   }
   
-  public Set<Class<?>> getMappedEntities() {
+  public Set<Class<?>> getMappedEntityClasses() {
     Set<Class<?>> mappedEntities = this.entityMap
         .keySet()
         .stream()
@@ -403,6 +415,25 @@ public class MappingInfo implements Traceable {
     finally {
       tracer.wayout();
     }
+  }
+  
+  public Set<String> getLabels(Class<?> entityClass) {
+    String className = entityClass.getName();
+    if (!this.entityMap.containsKey(className))
+      throw new IllegalArgumentException("Unknown class: '" + className + "'.");
+
+    Set<String> labels = new HashSet<>();
+    Element entityElement;
+    do {
+      entityElement = this.entityMap.get(className);
+      labels.add(entityElement.getAttribute("label"));
+      if (entityElement.hasAttribute("isSubClassOf"))
+        className = entityElement.getAttribute("isSubClassOf");
+      else
+        break;
+    } while (true);
+
+    return labels;
   }
 
   @Override
