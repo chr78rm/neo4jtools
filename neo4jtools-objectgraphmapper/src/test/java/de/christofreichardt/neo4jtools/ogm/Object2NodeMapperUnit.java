@@ -435,6 +435,7 @@ public class Object2NodeMapperUnit implements Traceable {
       }
         
       traceAllNodes();
+      checkNodes(5);
     }
     finally {
       tracer.wayout();
@@ -552,6 +553,25 @@ public class Object2NodeMapperUnit implements Traceable {
                 keyItemNode.getSingleRelationship(RESTFulCryptoRelationships.BELONGS_TO, Direction.OUTGOING) != null);
             Node endNode = keyItemNode.getSingleRelationship(RESTFulCryptoRelationships.BELONGS_TO, Direction.OUTGOING).getEndNode();
             Assert.assertTrue("Expected the account node", accountNode.getId() == endNode.getId());
+          }
+          break;
+          
+          case 5: {
+            Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+            Assert.assertTrue("Expected an account node.", accountNode != null);
+            Assert.assertTrue("Expected a single outgoing '" + RESTFulCryptoRelationships.OWNS + "' relationship.", 
+                accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
+            Node keyRingNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
+            Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_RINGS + "' label.", keyRingNode.hasLabel(RESTfulCryptoLabels.KEY_RINGS));
+            Assert.assertTrue("Expected a single outgoing '" + RESTFulCryptoRelationships.CONTAINS + "'relationship.", 
+                keyRingNode.getSingleRelationship(RESTFulCryptoRelationships.CONTAINS, Direction.OUTGOING) != null);
+            Node keyItemNode = keyRingNode.getSingleRelationship(RESTFulCryptoRelationships.CONTAINS, Direction.OUTGOING).getEndNode();
+            Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.KEY_ITEMS + "' label.", keyItemNode.hasLabel(RESTfulCryptoLabels.KEY_ITEMS));
+            Assert.assertTrue("Expected two '" + RESTFulCryptoRelationships.HAS + "' relationships.", accountNode.getDegree(RESTFulCryptoRelationships.HAS) == 2);
+            accountNode.getRelationships(RESTFulCryptoRelationships.HAS).forEach(relationship -> {
+              Assert.assertTrue("Expected a '" + RESTfulCryptoLabels.DOCUMENTS + "' label.", 
+                  relationship.getEndNode().hasLabel(RESTfulCryptoLabels.DOCUMENTS));
+            });
           }
           break;
             
