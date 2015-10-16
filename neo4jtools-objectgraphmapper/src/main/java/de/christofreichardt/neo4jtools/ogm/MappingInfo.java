@@ -65,7 +65,7 @@ public class MappingInfo implements Traceable {
   final private Map<Element, Map<String, SingleLinkData>> singleLinkMap = new HashMap<>();
   final private Map<Element, PrimaryKeyData> primaryKeyMap = new HashMap<>();
   final private Map<Element, String> versionFieldMap = new HashMap<>();
-  final private Map<Label, Class<?>> labelMap = new HashMap<>();
+  final private Map<String, Class<?>> labelMap = new HashMap<>();
 
   public MappingInfo() throws MappingInfo.Exception {
     try {
@@ -110,8 +110,8 @@ public class MappingInfo implements Traceable {
         
         tracer.out().printfIndentln("label = %s", label);
         
-        if (!labels.contains(label))
-          labels.add(label);
+        if (!this.labelMap.containsKey(label))
+          this.labelMap.put(label, Class.forName(className));
         else
           throw new MappingInfo.Exception("Duplicate label: '" + label + "'.");
       }
@@ -434,6 +434,13 @@ public class MappingInfo implements Traceable {
     } while (true);
 
     return labels;
+  }
+  
+  public Class<?> getMappedClass(Label label) {
+    if (!this.labelMap.containsKey(label.name()))
+      throw new IllegalArgumentException("Unknown label: '" + label + "'.");
+    
+    return this.labelMap.get(label.name());
   }
 
   @Override

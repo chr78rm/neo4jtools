@@ -55,6 +55,18 @@ public class Node2ObjectMapperUnit implements Traceable {
         schema.indexFor(RESTfulCryptoLabels.ACCOUNTS)
             .on("commonName")
             .create();
+        schema.indexFor(RESTfulCryptoLabels.DOCUMENTS)
+            .on("id")
+            .create();
+        schema.indexFor(RESTfulCryptoLabels.KEY_RINGS)
+            .on("id")
+            .create();
+        schema.indexFor(RESTfulCryptoLabels.KEY_ITEMS)
+            .on("id")
+            .create();
+        schema.indexFor(RESTfulCryptoLabels.ROLES)
+            .on("id")
+            .create();
         transaction.success();
       }
     }
