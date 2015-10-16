@@ -131,10 +131,10 @@ public class Object2NodeMapper implements Traceable {
           if (property == null  &&  !propertyData.isNullable()) 
             throw new Object2NodeMapper.Exception("Value required for property '" + fieldName + "'.");
           
-          if (property == null  &&  entityNode.hasProperty(propertyMapping.getKey()))
-            entityNode.removeProperty(propertyMapping.getKey());
+          if (property == null  &&  entityNode.hasProperty(propertyData.getName()))
+            entityNode.removeProperty(propertyData.getName());
           else if (property != null )
-            entityNode.setProperty(propertyMapping.getKey(), property);
+            entityNode.setProperty(propertyData.getName(), property);
         }
         catch (NoSuchFieldException ex) {
           tracer.logException(LogLevel.ERROR, ex, getClass(), "coverProperties(final Node entityNode)");

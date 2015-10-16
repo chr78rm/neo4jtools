@@ -22,8 +22,8 @@ import org.neo4j.graphdb.Direction;
 @NodeEntity(label = "ACCOUNTS")
 public class Account {
   @Id
-  @Property
-  private final String commonName;
+  @Property(name = "commonName")
+  private final String userId;
 
   @Property
   private String localityName;
@@ -43,12 +43,12 @@ public class Account {
   @Links(direction = Direction.OUTGOING, type = "HAS")
   private Collection<Document> documents;
 
-  public Account(String commonName) {
-    this.commonName = commonName;
+  public Account(String userId) {
+    this.userId = userId;
   }
 
-  public String getCommonName() {
-    return commonName;
+  public String getUserId() {
+    return userId;
   }
 
   public String getLocalityName() {
@@ -101,7 +101,7 @@ public class Account {
 
   @Override
   public String toString() {
-    return "Account[" + "commonName=" + commonName + "]";
+    return "Account[" + "userId=" + userId + "]";
   }
   
 }
