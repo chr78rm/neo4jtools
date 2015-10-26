@@ -9,6 +9,10 @@ package de.christofreichardt.neo4jtools.ogm;
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import de.christofreichardt.neo4jtools.idgen.IdGenLabels;
+import de.christofreichardt.neo4jtools.ogm.model.Account;
+import de.christofreichardt.neo4jtools.ogm.model.Account2;
+import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
 import java.io.File;
 import java.util.Properties;
@@ -32,7 +36,7 @@ import org.neo4j.tooling.GlobalGraphOperations;
  * @author Christof Reichardt
  */
 public class Node2ObjectMapperUnit implements Traceable {
-  static public GraphDatabaseService graphDatabaseService;
+  static private GraphDatabaseService graphDatabaseService;
   final static String DB_PATH = "." + File.separator + "db";
   final private Properties properties;
 
@@ -125,12 +129,55 @@ public class Node2ObjectMapperUnit implements Traceable {
   }
   
   @Test
-  public void coverFields() {
+  public void coverFields() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("void", this, "coverFields()");
     
     try {
+      Account account = new Account2("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      
+      Node node;
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Node2ObjectMapperUnit.graphDatabaseService);
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        node = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        account = (Account) node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        
+        tracer.out().printfIndentln("account = %s", account);
+        
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private void traceAllNodes() {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "traceAllNodes()");
+    
+    try {
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        for (RESTfulCryptoLabels label : RESTfulCryptoLabels.values()) {
+          tracer.out().printfIndentln("--> label: %s", label);
+          Node2ObjectMapperUnit.graphDatabaseService.findNodes(label).forEachRemaining(node -> {
+            RichNode richNode = new RichNode(node);
+            richNode.trace(tracer);
+          });
+        }
+        Node2ObjectMapperUnit.graphDatabaseService.findNodes(IdGenLabels.ID_GENERATOR).forEachRemaining(node -> {
+          RichNode richNode = new RichNode(node);
+          richNode.trace(tracer);
+        });
         transaction.success();
       }
     }
