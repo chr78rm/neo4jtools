@@ -23,7 +23,7 @@ import org.neo4j.graphdb.Direction;
 public class Account {
   @Id
   @Property(name = "commonName")
-  private final String userId;
+  private String userId;
 
   @Property
   private String localityName;
@@ -42,6 +42,9 @@ public class Account {
   
   @Links(direction = Direction.OUTGOING, type = "HAS")
   private Collection<Document> documents;
+
+  public Account() {
+  }
 
   public Account(String userId) {
     this.userId = userId;
