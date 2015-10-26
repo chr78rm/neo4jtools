@@ -46,7 +46,7 @@ import org.neo4j.tooling.GlobalGraphOperations;
  * @author Christof Reichardt
  */
 public class Object2NodeMapperUnit implements Traceable {
-  static public GraphDatabaseService graphDatabaseService;
+  static private GraphDatabaseService graphDatabaseService;
   final static String DB_PATH = "." + File.separator + "db";
   final private Properties properties;
   
