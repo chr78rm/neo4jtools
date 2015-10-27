@@ -155,6 +155,11 @@ public class Node2ObjectMapperUnit implements Traceable {
         
         transaction.success();
       }
+      
+      Assert.assertTrue("Wrong user id.", "Tester".equals(account.getUserId()));
+      Assert.assertTrue("Wrong country code.", "DE".equals(account.getCountryCode()));
+      Assert.assertTrue("Wrong locality.", "Rodgau".equals(account.getLocalityName()));
+      Assert.assertTrue("Wrong state.", "Hessen".equals(account.getStateName()));
     }
     finally {
       tracer.wayout();
