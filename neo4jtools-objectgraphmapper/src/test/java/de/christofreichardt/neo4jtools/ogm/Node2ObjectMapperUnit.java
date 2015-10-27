@@ -134,10 +134,11 @@ public class Node2ObjectMapperUnit implements Traceable {
     tracer.entry("void", this, "coverFields()");
     
     try {
-      Account account = new Account2("Tester");
+      Account2 account = new Account2("Tester");
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
       account.setStateName("Hessen");
+      account.setLastName("Reichardt");
       
       Node node;
       Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Node2ObjectMapperUnit.graphDatabaseService);
@@ -148,18 +149,25 @@ public class Node2ObjectMapperUnit implements Traceable {
       traceAllNodes();
       
       Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+      Object entity;
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
-        account = (Account) node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        entity = node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         
-        tracer.out().printfIndentln("account = %s", account);
+        tracer.out().printfIndentln("entity = %s", entity);
         
         transaction.success();
       }
+      
+      Assert.assertTrue("Wrong entity class.", entity instanceof Account2);
+      
+      account = (Account2) entity;
       
       Assert.assertTrue("Wrong user id.", "Tester".equals(account.getUserId()));
       Assert.assertTrue("Wrong country code.", "DE".equals(account.getCountryCode()));
       Assert.assertTrue("Wrong locality.", "Rodgau".equals(account.getLocalityName()));
       Assert.assertTrue("Wrong state.", "Hessen".equals(account.getStateName()));
+      Assert.assertTrue("Wrong last name.", "Reichardt".equals(account.getLastName()));
+      Assert.assertNull("Expected undefined first name.", account.getFirstName());
     }
     finally {
       tracer.wayout();

@@ -107,18 +107,15 @@ public class Node2ObjectMapper implements Traceable {
         try {
           String fieldName = propertyMapping.getKey();
           PropertyData propertyData = propertyMapping.getValue();
-          Object property = this.node.getProperty(propertyData.getName());
+          Object property = this.node.getProperty(propertyData.getName(), null);
           
           tracer.out().printfIndentln("propertyMapping[%s] = %s, property = %s", fieldName, propertyData, property);
           
           Field field = reflectedClass.getDeclaredField(fieldName);
           field.setAccessible(true);
-          if (propertyData.isNullable()) {
-            if (this.node.hasProperty(fieldName))
-              field.set(entity, property);
-          }
-          else
-            field.set(entity, property);
+          if (!propertyData.isNullable()  &&  !this.node.hasProperty(propertyData.getName())) 
+            throw new Node2ObjectMapper.Exception("Value expected for property '" + propertyData.getName() + "'.");
+          field.set(entity, property);
         }
         catch (NoSuchFieldException ex) {
           throw new Node2ObjectMapper.Exception("Invalid mapping definition.", ex);
