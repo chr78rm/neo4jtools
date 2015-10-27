@@ -10,11 +10,19 @@ import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
 import de.christofreichardt.neo4jtools.idgen.IdGenLabels;
-import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Account2;
+import de.christofreichardt.neo4jtools.ogm.model.Document;
+import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
+import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
 import java.io.File;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.chrono.IsoChronology;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -168,6 +176,65 @@ public class Node2ObjectMapperUnit implements Traceable {
       Assert.assertTrue("Wrong state.", "Hessen".equals(account.getStateName()));
       Assert.assertTrue("Wrong last name.", "Reichardt".equals(account.getLastName()));
       Assert.assertNull("Expected undefined first name.", account.getFirstName());
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void coverLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "coverLinks()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account2 account = new Account2("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      account.setLastName("Reichardt");
+      List<Document> documents = new ArrayList<>();
+      Document document = new Document(0L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-1");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      documents.add(document);
+      document = new Document(1L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-2");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      documents.add(document);
+      account.setDocuments(documents);
+      
+      Node node;
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Node2ObjectMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        node = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+      Object entity;
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        entity = node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        
+        tracer.out().printfIndentln("entity = %s", entity);
+        
+        transaction.success();
+      }
+      
+      Assert.assertTrue("Wrong entity class.", entity instanceof Account2);
+      
+      account = (Account2) entity;
+      
+      Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getDocuments() instanceof ProxyList);
+      Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getRoles() instanceof ProxyList);
     }
     finally {
       tracer.wayout();

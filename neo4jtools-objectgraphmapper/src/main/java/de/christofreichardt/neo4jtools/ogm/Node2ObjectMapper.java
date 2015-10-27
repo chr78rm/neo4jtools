@@ -10,7 +10,8 @@ import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
 import java.lang.reflect.Field;
-import java.util.Iterator;
+import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import org.neo4j.graphdb.Label;
@@ -52,6 +53,7 @@ public class Node2ObjectMapper implements Traceable {
       try {
         Object entity = mostSpecificClass.newInstance();
         entity = coverFields(entity);
+        entity = coverLinks(entity, relationshipTypes);
       
         return entity;
       }
@@ -112,10 +114,48 @@ public class Node2ObjectMapper implements Traceable {
           tracer.out().printfIndentln("propertyMapping[%s] = %s, property = %s", fieldName, propertyData, property);
           
           Field field = reflectedClass.getDeclaredField(fieldName);
+          if (Modifier.isFinal(field.getModifiers()))
+            throw new Node2ObjectMapper.Exception("Field '" + fieldName + "' is declared final.");
           field.setAccessible(true);
           if (!propertyData.isNullable()  &&  !this.node.hasProperty(propertyData.getName())) 
             throw new Node2ObjectMapper.Exception("Value expected for property '" + propertyData.getName() + "'.");
           field.set(entity, property);
+        }
+        catch (NoSuchFieldException ex) {
+          throw new Node2ObjectMapper.Exception("Invalid mapping definition.", ex);
+        }
+        catch (IllegalAccessException ex) {
+          throw new Error(ex); // should be impossible since the field has been made accessible
+        }
+      }
+      
+      return entity;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private <T extends Enum<T> & RelationshipType> Object coverLinks(Object entity, Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("Object", this, "coverLinks(Object entity)");
+    
+    try {
+      ReflectedClass reflectedClass = new ReflectedClass(entity.getClass());
+      Set<Map.Entry<String, LinkData>> linkMappings = this.mappingInfo.getLinkMappings(entity.getClass());
+      for (Map.Entry<String, LinkData> linkMapping : linkMappings) {
+        String fieldName = linkMapping.getKey();
+        LinkData linkData = linkMapping.getValue();
+        
+        tracer.out().printfIndentln("linkData[%s] = %s", fieldName, linkData);
+        
+        try {
+          Field field = reflectedClass.getDeclaredField(fieldName);
+          if (Modifier.isFinal(field.getModifiers()))
+            throw new Node2ObjectMapper.Exception("Field '" + fieldName + "' is declared final.");
+          field.setAccessible(true);
+          Collection<Object> entities = new ProxyList<>(this.node, linkData, this.mappingInfo, relationshipTypes);
+          field.set(entity, entities);
         }
         catch (NoSuchFieldException ex) {
           throw new Node2ObjectMapper.Exception("Invalid mapping definition.", ex);
