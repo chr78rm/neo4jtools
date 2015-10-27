@@ -399,10 +399,11 @@ public class Object2NodeMapperUnit implements Traceable {
       LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
       String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
       
-      Account account = new Account2("Tester");
+      Account2 account = new Account2("Tester");
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
       account.setStateName("Hessen");
+      account.setLastName("Reichardt");
       KeyRing keyRing = new KeyRing(0L);
       keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
       List<KeyItem> keyItems = new ArrayList<>();
@@ -449,6 +450,7 @@ public class Object2NodeMapperUnit implements Traceable {
     try {
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
         for (RESTfulCryptoLabels label : RESTfulCryptoLabels.values()) {
+          tracer.out().printfIndentln("--> label: %s", label);
           Object2NodeMapperUnit.graphDatabaseService.findNodes(label).forEachRemaining(node -> {
             RichNode richNode = new RichNode(node);
             richNode.trace(tracer);
@@ -559,6 +561,11 @@ public class Object2NodeMapperUnit implements Traceable {
           case 5: {
             Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
             Assert.assertTrue("Expected an account node.", accountNode != null);
+            Assert.assertTrue("Wrong property value.", accountNode.getProperty("localityName").equals("Rodgau"));
+            Assert.assertTrue("Wrong property value.", accountNode.getProperty("stateName").equals("Hessen"));
+            Assert.assertTrue("Wrong property value.", accountNode.getProperty("countryCode").equals("DE"));
+            Assert.assertTrue("Wrong property value.", accountNode.getProperty("lastName").equals("Reichardt"));
+            Assert.assertTrue("Expected an undefined first name.", !accountNode.hasProperty("firstName"));
             Assert.assertTrue("Expected a single outgoing '" + RESTFulCryptoRelationships.OWNS + "' relationship.", 
                 accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) != null);
             Node keyRingNode = accountNode.getSingleRelationship(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING).getEndNode();
