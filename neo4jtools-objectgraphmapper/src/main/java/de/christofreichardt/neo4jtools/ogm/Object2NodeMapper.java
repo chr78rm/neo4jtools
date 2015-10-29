@@ -171,7 +171,7 @@ public class Object2NodeMapper implements Traceable {
           if (followLinks(linkField, linkData)) {
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
             entityNode.getRelationships(Direction.OUTGOING, relationshipType).forEach(relationShip -> {
-              boolean matched = linkData.matches(this.entityClass, relationShip);
+              boolean matched = linkData.matches(this.entityClass, relationShip, Direction.OUTGOING);
               tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
               if (matched)
                 relationShip.delete();
@@ -252,7 +252,7 @@ public class Object2NodeMapper implements Traceable {
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, singleLinkData.getType());
             Relationship singleRelationship = entityNode.getSingleRelationship(relationshipType, Direction.OUTGOING);
             if (singleRelationship != null) {
-              boolean matched = singleLinkData.matches(this.entityClass, singleRelationship);
+              boolean matched = singleLinkData.matches(this.entityClass, singleRelationship, Direction.OUTGOING);
               tracer.out().printfIndentln("%s matched: %b", singleRelationship, matched);
               if (matched) {
                 singleRelationship.delete();

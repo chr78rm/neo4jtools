@@ -12,8 +12,6 @@ import de.christofreichardt.diagnosis.TracerFactory;
 import de.christofreichardt.neo4jtools.idgen.IdGenLabels;
 import de.christofreichardt.neo4jtools.ogm.model.Account2;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
-import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
-import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
 import java.io.File;
@@ -156,10 +154,10 @@ public class Node2ObjectMapperUnit implements Traceable {
       }
       traceAllNodes();
       
-      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
       Object entity;
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
-        entity = node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+        entity = node2ObjectMapper.map(RESTFulCryptoRelationships.class);
         
         tracer.out().printfIndentln("entity = %s", entity);
         
@@ -197,18 +195,18 @@ public class Node2ObjectMapperUnit implements Traceable {
       account.setStateName("Hessen");
       account.setLastName("Reichardt");
       List<Document> documents = new ArrayList<>();
-      Document document = new Document(0L);
-      document.setAccount(account);
-      document.setTitle("Testdocument-1");
-      document.setType("pdf");
-      document.setCreationDate(formattedTime);
-      documents.add(document);
-      document = new Document(1L);
-      document.setAccount(account);
-      document.setTitle("Testdocument-2");
-      document.setType("pdf");
-      document.setCreationDate(formattedTime);
-      documents.add(document);
+      Document document0 = new Document(0L);
+      document0.setAccount(account);
+      document0.setTitle("Testdocument-1");
+      document0.setType("pdf");
+      document0.setCreationDate(formattedTime);
+      documents.add(document0);
+      Document document1 = new Document(1L);
+      document1.setAccount(account);
+      document1.setTitle("Testdocument-2");
+      document1.setType("pdf");
+      document1.setCreationDate(formattedTime);
+      documents.add(document1);
       account.setDocuments(documents);
       
       Node node;
@@ -219,22 +217,26 @@ public class Node2ObjectMapperUnit implements Traceable {
       }
       traceAllNodes();
       
-      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
       Object entity;
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
-        entity = node2ObjectMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+        entity = node2ObjectMapper.map(RESTFulCryptoRelationships.class);
         
         tracer.out().printfIndentln("entity = %s", entity);
+        Assert.assertTrue("Wrong entity class.", entity instanceof Account2);
+
+        account = (Account2) entity;
+
+        Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getDocuments() instanceof ProxyList);
+        Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getRoles() instanceof ProxyList);
+        tracer.out().printfIndentln("account.getDocuments().size() = %d", account.getDocuments().size());
         
         transaction.success();
       }
       
-      Assert.assertTrue("Wrong entity class.", entity instanceof Account2);
-      
-      account = (Account2) entity;
-      
-      Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getDocuments() instanceof ProxyList);
-      Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getRoles() instanceof ProxyList);
+      Assert.assertTrue("Expected two documents.", account.getDocuments().size() == 2);
+      Assert.assertTrue("Expected the '" + document0 + "'.", account.getDocuments().contains(document0));
+      Assert.assertTrue("Expected the '" + document1 + "'.", account.getDocuments().contains(document1));
     }
     finally {
       tracer.wayout();

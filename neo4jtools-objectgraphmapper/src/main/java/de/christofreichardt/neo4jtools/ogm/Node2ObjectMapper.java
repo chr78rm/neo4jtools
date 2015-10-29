@@ -35,23 +35,23 @@ public class Node2ObjectMapper implements Traceable {
   
   final private RichNode node;
   final private MappingInfo mappingInfo;
+  final private Class<?> mostSpecificClass;
 
-  public Node2ObjectMapper(Node node) throws MappingInfo.Exception {
+  public Node2ObjectMapper(Node node) throws MappingInfo.Exception, Node2ObjectMapper.Exception {
     this.node = new RichNode(node);
     this.mappingInfo = new MappingInfo();
+    this.mostSpecificClass = detectMostSpecificClass();
   }
   
-  public <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> Object map(Class<S> labels, Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
+  public <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> Object map(Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("Object", this, "map(Class<S> labels, Class<T> relationshipTypes)");
+    tracer.entry("Object", this, "map(Class<T> relationshipTypes)");
     
     try {
-      Class<?> mostSpecificClass = detectMostSpecificClass();
-      
-      tracer.out().printfIndentln("mostSpecificClass.getName() = %s", mostSpecificClass.getName());
+      tracer.out().printfIndentln("mostSpecificClass.getName() = %s", this.mostSpecificClass.getName());
       
       try {
-        Object entity = mostSpecificClass.newInstance();
+        Object entity = this.mostSpecificClass.newInstance();
         entity = coverFields(entity);
         entity = coverLinks(entity, relationshipTypes);
       
@@ -154,7 +154,7 @@ public class Node2ObjectMapper implements Traceable {
           if (Modifier.isFinal(field.getModifiers()))
             throw new Node2ObjectMapper.Exception("Field '" + fieldName + "' is declared final.");
           field.setAccessible(true);
-          Collection<Object> entities = new ProxyList<>(this.node, linkData, this.mappingInfo, relationshipTypes);
+          Collection<Object> entities = new ProxyList<>(this.node, this.mostSpecificClass, linkData, this.mappingInfo, relationshipTypes);
           field.set(entity, entities);
         }
         catch (NoSuchFieldException ex) {

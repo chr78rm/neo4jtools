@@ -41,12 +41,12 @@ public class LinkData implements Traceable {
     return linkedEntityClassName;
   }
   
-  public boolean matches(Class<?> startClass, Relationship relationship) {
+  public boolean matches(Class<?> startClass, Relationship relationship, Direction direction) {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("boolean", this, "matches(Relationship relationship)");
     
     try {
-      tracer.out().printfIndentln("this.direction = %s", this.direction);
+      tracer.out().printfIndentln("(%s == %s) = %b", this.direction, direction, this.direction == direction);
       tracer.out().printfIndentln("relationship.getType().name() = %s", relationship.getType().name());
       relationship.getStartNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("startNodeLabel = %s", startNodeLabel.name()));
       relationship.getEndNode().getLabels().forEach(startNodeLabel -> tracer.out().printfIndentln("endNodeLabel = %s", startNodeLabel.name()));
@@ -54,7 +54,7 @@ public class LinkData implements Traceable {
       tracer.out().printfIndentln("endClass.getAnnotation(NodeEntity.class).label() = %s", this.linkedEntityClass.getAnnotation(NodeEntity.class).label());
       
       boolean matched;
-      if (this.direction == Direction.OUTGOING) {
+      if (this.direction == direction) {
         boolean startLabelFlag = false;
         for (Label startLabel : relationship.getStartNode().getLabels()) {
           if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
