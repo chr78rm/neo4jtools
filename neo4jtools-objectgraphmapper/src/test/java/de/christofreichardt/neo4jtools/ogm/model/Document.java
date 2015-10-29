@@ -7,6 +7,7 @@ import de.christofreichardt.neo4jtools.apt.Property;
 import de.christofreichardt.neo4jtools.apt.SingleLink;
 import de.christofreichardt.neo4jtools.ogm.Cell;
 import de.christofreichardt.neo4jtools.ogm.Wrapper;
+import java.util.Objects;
 import org.neo4j.graphdb.Direction;
 
 /**
@@ -88,5 +89,33 @@ public class Document {
   @Override
   public String toString() {
     return "Document[" + "id=" + id + "]";
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 5;
+    hash = 67 * hash + Objects.hashCode(this.id);
+    return hash;
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    boolean matched;
+    
+    if (this == object) {
+      matched = true;
+    }
+    else if (object == null) {
+      matched = false;
+    }
+    else if (getClass() != object.getClass()) {
+      matched = false;
+    }
+    else {
+      final Document other = (Document) object;
+      matched = Objects.equals(this.id, other.id);
+    }
+    
+    return matched;
   }
 }
