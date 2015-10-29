@@ -118,9 +118,9 @@ public class AnnotationProcessorUnit implements Traceable {
     tracer.entry("void", this, "topLabels()");
     
     try {
-      NodeList nodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity/:Property/:PrimaryKey/@label"
-          , this.mappingDocument.getDocumentElement()
-          , XPathConstants.NODESET);
+      NodeList nodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity/:Property/:PrimaryKey/@label", 
+          this.mappingDocument.getDocumentElement(), 
+          XPathConstants.NODESET);
       
       tracer.out().printfIndentln("nodes.getLength() = %d", nodes.getLength());
       for (int i=0; i<nodes.getLength(); i++) {
