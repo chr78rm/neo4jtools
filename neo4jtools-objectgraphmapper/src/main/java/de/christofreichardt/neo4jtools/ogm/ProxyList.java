@@ -55,13 +55,13 @@ public class ProxyList<T extends Enum<T> & RelationshipType> implements Collecti
         for (Relationship relationship : relationships) {
           if (this.linkData.matches(this.startClass, relationship, this.linkData.getDirection())) {
             Node endNode = relationship.getEndNode();
-            Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(endNode);
+            Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(endNode, this.mappingInfo);
             Object linkedEntity = node2ObjectMapper.map(this.relationshipTypes);
             this.entities.add(linkedEntity);
           }
         }
       }
-      catch (MappingInfo.Exception | Node2ObjectMapper.Exception ex) {
+      catch (Node2ObjectMapper.Exception ex) {
         throw new RuntimeException("Problems when loading the entities.", ex);
       }
     }
