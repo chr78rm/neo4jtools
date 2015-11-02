@@ -57,18 +57,38 @@ public class LinkData implements Traceable {
       if (this.direction == direction) {
         boolean startLabelFlag = false;
         for (Label startLabel : relationship.getStartNode().getLabels()) {
-          if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
-            startLabelFlag = true;
-            break;
+          if (direction == Direction.OUTGOING) {
+            if (startLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
+              startLabelFlag = true;
+              break;
+            }
           }
+          else if (direction == Direction.INCOMING) {
+            if (startLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
+              startLabelFlag = true;
+              break;
+            }
+          }
+          else
+            throw new UnsupportedOperationException(Direction.BOTH + " isn't supported.");
         }
 
         boolean endLabelFlag = false;
         for (Label endLabel : relationship.getEndNode().getLabels()) {
-          if (endLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
-            endLabelFlag = true;
-            break;
+          if (direction == Direction.OUTGOING) {
+            if (endLabel.name().equals(this.linkedEntityClass.getAnnotation(NodeEntity.class).label())) {
+              endLabelFlag = true;
+              break;
+            }
           }
+          else if (direction == Direction.INCOMING) {
+           if (endLabel.name().equals(startClass.getAnnotation(NodeEntity.class).label())) {
+              endLabelFlag = true;
+              break;
+            }
+          }
+          else
+            throw new UnsupportedOperationException(Direction.BOTH + " isn't supported.");
         }
         
         matched = startLabelFlag && endLabelFlag;
