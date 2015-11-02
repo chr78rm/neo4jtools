@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
 import org.junit.After;
@@ -237,6 +238,71 @@ public class Node2ObjectMapperUnit implements Traceable {
       Assert.assertTrue("Expected two documents.", account.getDocuments().size() == 2);
       Assert.assertTrue("Expected the '" + document0 + "'.", account.getDocuments().contains(document0));
       Assert.assertTrue("Expected the '" + document1 + "'.", account.getDocuments().contains(document1));
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void coverSingleLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "coverSingleLinks()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account2 account = new Account2("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      account.setLastName("Reichardt");
+      List<Document> documents = new ArrayList<>();
+      Document document0 = new Document(0L);
+      document0.setAccount(account);
+      document0.setTitle("Testdocument-1");
+      document0.setType("pdf");
+      document0.setCreationDate(formattedTime);
+      documents.add(document0);
+      Document document1 = new Document(1L);
+      document1.setAccount(account);
+      document1.setTitle("Testdocument-2");
+      document1.setType("pdf");
+      document1.setCreationDate(formattedTime);
+      documents.add(document1);
+      account.setDocuments(documents);
+      
+      Node node;
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Node2ObjectMapperUnit.graphDatabaseService);
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        node = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      Object entity;
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+        entity = node2ObjectMapper.map(RESTFulCryptoRelationships.class);
+        
+        tracer.out().printfIndentln("entity = %s", entity);
+        Assert.assertTrue("Wrong entity class.", entity instanceof Account2);
+
+        account = (Account2) entity;
+
+        Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getDocuments() instanceof ProxyList);
+        Assert.assertTrue("Expected a " + ProxyList.class.getSimpleName() + " instance.", account.getRoles() instanceof ProxyList);
+        tracer.out().printfIndentln("account.getDocuments().size() = %d", account.getDocuments().size());
+        Assert.assertTrue("Expected two documents.", account.getDocuments().size() == 2);
+        
+        Document document = account.getDocuments().iterator().next();
+
+        tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
+        Assert.assertTrue("Expected an Account2 instance.", document.getAccount() instanceof Account2);
+        
+        transaction.success();
+      }
     }
     finally {
       tracer.wayout();

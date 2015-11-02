@@ -38,8 +38,12 @@ public class Node2ObjectMapper implements Traceable {
   final private Class<?> mostSpecificClass;
 
   public Node2ObjectMapper(Node node) throws MappingInfo.Exception, Node2ObjectMapper.Exception {
+    this(node, new MappingInfo());
+  }
+
+  public Node2ObjectMapper(Node node, MappingInfo mappingInfo) throws Node2ObjectMapper.Exception {
     this.node = new RichNode(node);
-    this.mappingInfo = new MappingInfo();
+    this.mappingInfo = mappingInfo;
     this.mostSpecificClass = detectMostSpecificClass();
   }
   
@@ -54,6 +58,7 @@ public class Node2ObjectMapper implements Traceable {
         Object entity = this.mostSpecificClass.newInstance();
         entity = coverFields(entity);
         entity = coverLinks(entity, relationshipTypes);
+        entity = coverSingleLinks(entity, relationshipTypes);
       
         return entity;
       }
@@ -138,7 +143,7 @@ public class Node2ObjectMapper implements Traceable {
   
   private <T extends Enum<T> & RelationshipType> Object coverLinks(Object entity, Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("Object", this, "coverLinks(Object entity)");
+    tracer.entry("Object", this, "coverLinks(Object entity, Class<T> relationshipTypes)");
     
     try {
       ReflectedClass reflectedClass = new ReflectedClass(entity.getClass());
@@ -156,6 +161,42 @@ public class Node2ObjectMapper implements Traceable {
           field.setAccessible(true);
           Collection<Object> entities = new ProxyList<>(this.node, this.mostSpecificClass, linkData, this.mappingInfo, relationshipTypes);
           field.set(entity, entities);
+        }
+        catch (NoSuchFieldException ex) {
+          throw new Node2ObjectMapper.Exception("Invalid mapping definition.", ex);
+        }
+        catch (IllegalAccessException ex) {
+          throw new Error(ex); // should be impossible since the field has been made accessible
+        }
+      }
+      
+      return entity;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private <T extends Enum<T> & RelationshipType> Object coverSingleLinks(Object entity, Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("Object", this, "coverSingleLinks(Object entity, Class<T> relationshipTypes)");
+    
+    try {
+      ReflectedClass reflectedClass = new ReflectedClass(entity.getClass());
+      Set<Map.Entry<String, SingleLinkData>> singleLinkMappings = this.mappingInfo.getSingleLinkMappings(entity.getClass());
+      for (Map.Entry<String, SingleLinkData> singleLinkMapping : singleLinkMappings) {
+        String fieldName = singleLinkMapping.getKey();
+        SingleLinkData singleLinkData = singleLinkMapping.getValue();
+        
+        tracer.out().printfIndentln("singleLinkData[%s] = %s", fieldName, singleLinkData);
+        
+        try {
+          Field field = reflectedClass.getDeclaredField(fieldName);
+          if (Modifier.isFinal(field.getModifiers()))
+            throw new Node2ObjectMapper.Exception("Field '" + fieldName + "' is declared final.");
+          field.setAccessible(true);
+          Cell<Object> proxy = new ProxyObject<>(this.node, singleLinkData, this.mappingInfo, relationshipTypes, this.mostSpecificClass);
+          field.set(entity, proxy);
         }
         catch (NoSuchFieldException ex) {
           throw new Node2ObjectMapper.Exception("Invalid mapping definition.", ex);
