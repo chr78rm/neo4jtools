@@ -30,7 +30,7 @@ public class Document {
   @Property
   private String type;
   
-  @SingleLink(direction = Direction.INCOMING, type = "OWNS")
+  @SingleLink(direction = Direction.INCOMING, type = "HAS")
   private Cell<Account> account;
 
   public Document() {
