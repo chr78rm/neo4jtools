@@ -10,10 +10,14 @@ import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
 import de.christofreichardt.neo4jtools.idgen.IdGenLabels;
+import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Account2;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
+import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
+import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
+import de.christofreichardt.neo4jtools.ogm.model.Role;
 import java.io.File;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,11 +35,17 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.ResourceIterable;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.graphdb.schema.Schema;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Evaluator;
+import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
 import org.neo4j.tooling.GlobalGraphOperations;
 
 /**
@@ -300,6 +310,118 @@ public class Node2ObjectMapperUnit implements Traceable {
 
         tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
         Assert.assertTrue("Expected an Account2 instance.", document.getAccount() instanceof Account2);
+        
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void entityTree() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "entityTree()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account2 superTester = new Account2("Supertester");
+      superTester.setCountryCode("DE");
+      superTester.setLocalityName("Rodgau");
+      superTester.setStateName("Hessen");
+      superTester.setLastName("Reichardt");
+      List<Document> superTesterDocuments = new ArrayList<>();
+      Document document0 = new Document(0L);
+      document0.setAccount(superTester);
+      document0.setTitle("Testdocument-1");
+      document0.setType("pdf");
+      document0.setCreationDate(formattedTime);
+      superTesterDocuments.add(document0);
+      Document document1 = new Document(1L);
+      document1.setAccount(superTester);
+      document1.setTitle("Testdocument-2");
+      document1.setType("pdf");
+      document1.setCreationDate(formattedTime);
+      superTesterDocuments.add(document1);
+      superTester.setDocuments(superTesterDocuments);
+      List<Role> superTesterRoles = new ArrayList<>();
+      Role adminRole = new Role(0L);
+      adminRole.setName("Administrator");
+      superTesterRoles.add(adminRole);
+      Role userRole = new Role(1L);
+      userRole.setName("User");
+      superTesterRoles.add(userRole);
+      superTester.setRoles(superTesterRoles);
+      KeyRing superTesterKeyRing = new KeyRing(0L);
+      superTesterKeyRing.setPath("." + File.separator + "store" + File.separator + "theSuperTesterKeystore.jks");
+      List<KeyItem> superTesterKeyItems = new ArrayList<>();
+      KeyItem keyItem0 = new KeyItem(0L);
+      keyItem0.setKeyRing(superTesterKeyRing);
+      keyItem0.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem0.setCreationDate(formattedTime);
+      superTesterKeyItems.add(keyItem0);
+      superTesterKeyRing.setKeyItems(superTesterKeyItems);
+      superTester.setKeyRing(superTesterKeyRing);
+      Account tester = new Account("Tester");
+      tester.setCountryCode("DE");
+      tester.setLocalityName("Hainhausen");
+      tester.setStateName("Hessen");
+      List<Document> testerDocuments = new ArrayList<>();
+      Document document2 = new Document(2L);
+      document2.setAccount(superTester);
+      document2.setTitle("Testdocument-2");
+      document2.setType("pdf");
+      document2.setCreationDate(formattedTime);
+      testerDocuments.add(document2);
+      tester.setDocuments(testerDocuments);
+      List<Role> testerRoles = new ArrayList<>();
+      testerRoles.add(userRole);
+      tester.setRoles(testerRoles);
+      KeyRing testerKeyRing = new KeyRing(1L);
+      testerKeyRing.setPath("." + File.separator + "store" + File.separator + "theTesterKeystore.jks");
+      List<KeyItem> testerKeyItems = new ArrayList<>();
+      KeyItem keyItem1 = new KeyItem(1L);
+      keyItem1.setKeyRing(testerKeyRing);
+      keyItem1.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem1.setCreationDate(formattedTime);
+      testerKeyItems.add(keyItem1);
+      testerKeyRing.setKeyItems(testerKeyItems);
+      tester.setKeyRing(testerKeyRing);
+      
+      Node node;
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Node2ObjectMapperUnit.graphDatabaseService);
+        node = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        object2NodeMapper = new Object2NodeMapper(tester, Node2ObjectMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        Traverser traverser = Node2ObjectMapperUnit.graphDatabaseService
+            .traversalDescription()
+            .depthFirst()
+            .evaluator((Path path) -> {
+              tracer.out().printfIndentln("%s", path);
+              return Evaluation.INCLUDE_AND_CONTINUE;
+            })
+            .uniqueness(Uniqueness.NODE_GLOBAL)
+            .traverse(node);
+        
+        int nodeCounter = 0;
+        ResourceIterator<Node> iter = traverser.nodes().iterator();
+        while (iter.hasNext()) {
+          iter.next();
+          nodeCounter++;
+        }
+        
+        final int EXPECTED_NODES = 11;
+        tracer.out().printfIndentln("nodeCounter = %d", nodeCounter);
+        Assert.assertTrue("Expected " + EXPECTED_NODES + " nodes.", nodeCounter == EXPECTED_NODES);
         
         transaction.success();
       }
