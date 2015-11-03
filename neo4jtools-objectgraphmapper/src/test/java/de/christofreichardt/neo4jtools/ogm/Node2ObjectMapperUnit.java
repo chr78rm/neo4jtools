@@ -182,9 +182,9 @@ public class Node2ObjectMapperUnit implements Traceable {
   }
   
   @Test
-  public void coverLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+  public void proxyList() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("void", this, "coverLinks()");
+    tracer.entry("void", this, "proxyList()");
     
     try {
       LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
@@ -245,9 +245,9 @@ public class Node2ObjectMapperUnit implements Traceable {
   }
   
   @Test
-  public void coverSingleLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+  public void proxyObject() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("void", this, "coverSingleLinks()");
+    tracer.entry("void", this, "proxyObject()");
     
     try {
       LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
