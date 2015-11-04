@@ -26,6 +26,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -40,6 +42,7 @@ import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.graphdb.schema.Schema;
 import org.neo4j.graphdb.traversal.Evaluation;
@@ -67,7 +70,10 @@ public class Node2ObjectMapperUnit implements Traceable {
     tracer.entry("void", Node2ObjectMapperUnit.class, "startDB()");
     
     try {
-      Node2ObjectMapperUnit.graphDatabaseService = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+      Node2ObjectMapperUnit.graphDatabaseService = new GraphDatabaseFactory()
+          .newEmbeddedDatabaseBuilder(DB_PATH)
+          .setConfig(GraphDatabaseSettings.keep_logical_logs, "10 files")
+          .newGraphDatabase();
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
         Schema schema = Node2ObjectMapperUnit.graphDatabaseService.schema();
         for (IndexDefinition index : schema.getIndexes()) {
@@ -380,7 +386,7 @@ public class Node2ObjectMapperUnit implements Traceable {
       List<Role> testerRoles = new ArrayList<>();
       testerRoles.add(userRole);
       tester.setRoles(testerRoles);
-      KeyRing testerKeyRing = new KeyRing(1L);
+      KeyRing testerKeyRing = new KeyRing(1L); // TODO: provoke a constraint violation by setting the Id to 0L
       testerKeyRing.setPath("." + File.separator + "store" + File.separator + "theTesterKeystore.jks");
       List<KeyItem> testerKeyItems = new ArrayList<>();
       KeyItem keyItem1 = new KeyItem(1L);
@@ -391,10 +397,10 @@ public class Node2ObjectMapperUnit implements Traceable {
       testerKeyRing.setKeyItems(testerKeyItems);
       tester.setKeyRing(testerKeyRing);
       
-      Node node;
+      Node superTesterNode;
       try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
         Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Node2ObjectMapperUnit.graphDatabaseService);
-        node = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        superTesterNode = object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         object2NodeMapper = new Object2NodeMapper(tester, Node2ObjectMapperUnit.graphDatabaseService);
         object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         transaction.success();
@@ -410,7 +416,7 @@ public class Node2ObjectMapperUnit implements Traceable {
               return Evaluation.INCLUDE_AND_CONTINUE;
             })
             .uniqueness(Uniqueness.NODE_GLOBAL)
-            .traverse(node);
+            .traverse(superTesterNode);
         
         int nodeCounter = 0;
         ResourceIterator<Node> iter = traverser.nodes().iterator();
@@ -424,6 +430,73 @@ public class Node2ObjectMapperUnit implements Traceable {
         Assert.assertTrue("Expected " + EXPECTED_NODES + " nodes.", nodeCounter == EXPECTED_NODES);
         
         transaction.success();
+      }
+      
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        Node node = Node2ObjectMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ROLES, "id", 0L);
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+        Object entity = node2ObjectMapper.map(RESTFulCryptoRelationships.class);
+        
+        RichNode richNode = new RichNode(node);
+        richNode.trace(tracer);
+        Assert.assertTrue("Expected a Role entity.", entity instanceof Role);
+        
+        Role role = (Role) entity;
+        
+        tracer.out().printfIndentln("role.getName() = %s", role.getName());
+        Assert.assertTrue("Expected an Administrator role.", Objects.equals("Administrator", role.getName()));
+        
+        Iterator<Account> iter = role.getAccounts().iterator();
+        
+        Assert.assertTrue("Expected at least one account.", iter.hasNext());
+        
+        Account account = iter.next();
+        
+        tracer.out().printfIndentln("account.getUserId() = %s", account.getUserId());
+        Assert.assertTrue("Expected the 'Supertester' account.", Objects.equals("Supertester", account.getUserId()));
+        Assert.assertTrue("Expected that Supertester has two documents .", account.getDocuments().size() == 2);
+        
+        Optional<Role> optionalRole = account.getRoles()
+            .stream()
+            .filter(theRole -> Objects.equals("User", theRole.getName()))
+            .findAny();
+        
+        tracer.out().printfIndentln("optionalRole = %s", optionalRole);
+        Assert.assertTrue("Expected a present role.", optionalRole.isPresent());
+        
+        role = optionalRole.get();
+        
+        tracer.out().printfIndentln("role = %s", role);
+        Assert.assertTrue("Expected a present role.", Objects.equals("User", role.getName()));
+        
+        Optional<Account> optionalAccount = role.getAccounts()
+            .stream()
+            .filter(theAccount -> Objects.equals("Tester", theAccount.getUserId()))
+            .findAny();
+        
+        tracer.out().printfIndentln("optionalAccount = %s", optionalAccount);
+        Assert.assertTrue("Expected a present account.", optionalAccount.isPresent());
+        
+        account = optionalAccount.get();
+        
+        tracer.out().printfIndentln("account.getUserId() = %s", account.getUserId());
+        Assert.assertTrue("Expected the 'Tester' account.", Objects.equals("Tester", account.getUserId()));
+        Assert.assertTrue("Expected at least one document.", !account.getDocuments().isEmpty());
+        tracer.out().printfIndentln("account.getKeyRing() = %s", account.getKeyRing());
+        Assert.assertTrue("Wrong id.", Objects.equals(account.getKeyRing().getId(), testerKeyRing.getId()));
+        
+        Document document = account.getDocuments().iterator().next();
+        
+        tracer.out().printfIndentln("document = %s", document);
+        Assert.assertTrue("Expected the 'Testdocument-2'.", Objects.equals("Testdocument-2", document.getTitle()));
+        tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
+        Assert.assertTrue("Expected the 'Tester' account.", Objects.equals(account, document.getAccount()));
+        
+        KeyRing keyRing = account.getKeyRing();
+        
+        tracer.out().printfIndentln("keyRing.getAccount() = %s", keyRing.getAccount());
+        Assert.assertTrue("Expected the 'Tester' account.", Objects.equals(account, keyRing.getAccount()));
+        Assert.assertTrue("Expected one key item.", keyRing.getKeyItems().size() == 1);
       }
     }
     finally {
