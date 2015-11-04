@@ -54,8 +54,17 @@ public class ProxyList<T extends Enum<T> & RelationshipType> implements Collecti
       try {
         for (Relationship relationship : relationships) {
           if (this.linkData.matches(this.startClass, relationship, this.linkData.getDirection())) {
-            Node endNode = relationship.getEndNode();
-            Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(endNode, this.mappingInfo);
+            Node entityNode;
+            if (this.linkData.getDirection() == Direction.OUTGOING) {
+              entityNode = relationship.getEndNode();
+            }
+            else if (this.linkData.getDirection() == Direction.INCOMING) {
+              entityNode = relationship.getStartNode();
+            }
+            else
+              throw new UnsupportedOperationException(Direction.BOTH + " isn't supported yet.");
+            
+            Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, this.mappingInfo);
             Object linkedEntity = node2ObjectMapper.map(this.relationshipTypes);
             this.entities.add(linkedEntity);
           }
