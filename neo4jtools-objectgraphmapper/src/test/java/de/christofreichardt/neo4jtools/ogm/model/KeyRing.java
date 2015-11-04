@@ -83,4 +83,9 @@ public class KeyRing {
     this.account = new Wrapper<>(account);
   }
 
+  @Override
+  public String toString() {
+    return "KeyRing[" + "id=" + id + ", path=" + path + "]";
+  }
+
 }
