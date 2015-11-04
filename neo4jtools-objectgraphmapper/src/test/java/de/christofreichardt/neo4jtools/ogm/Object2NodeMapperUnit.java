@@ -37,6 +37,7 @@ import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.ResourceIterable;
 import org.neo4j.graphdb.Transaction;
 import org.neo4j.graphdb.factory.GraphDatabaseFactory;
+import org.neo4j.graphdb.factory.GraphDatabaseSettings;
 import org.neo4j.graphdb.schema.IndexDefinition;
 import org.neo4j.graphdb.schema.Schema;
 import org.neo4j.tooling.GlobalGraphOperations;
@@ -63,7 +64,10 @@ public class Object2NodeMapperUnit implements Traceable {
     tracer.entry("void", Object2NodeMapperUnit.class, "startDB()");
     
     try {
-      Object2NodeMapperUnit.graphDatabaseService = new GraphDatabaseFactory().newEmbeddedDatabase(DB_PATH);
+      Object2NodeMapperUnit.graphDatabaseService = new GraphDatabaseFactory()
+          .newEmbeddedDatabaseBuilder(DB_PATH)
+          .setConfig(GraphDatabaseSettings.keep_logical_logs, "10 files")
+          .newGraphDatabase();
       try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
         Schema schema = Object2NodeMapperUnit.graphDatabaseService.schema();
         for (IndexDefinition index : schema.getIndexes()) {
