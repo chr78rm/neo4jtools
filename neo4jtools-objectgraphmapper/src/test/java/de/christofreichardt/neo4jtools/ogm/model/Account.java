@@ -13,6 +13,7 @@ import de.christofreichardt.neo4jtools.apt.SingleLink;
 import de.christofreichardt.neo4jtools.ogm.Cell;
 import de.christofreichardt.neo4jtools.ogm.Wrapper;
 import java.util.Collection;
+import java.util.Objects;
 import org.neo4j.graphdb.Direction;
 
 /**
@@ -105,6 +106,33 @@ public class Account {
   @Override
   public String toString() {
     return "Account[" + "userId=" + userId + "]";
+  }
+
+  @Override
+  public int hashCode() {
+    int hash = 5;
+    hash = 97 * hash + Objects.hashCode(this.userId);
+    return hash;
+  }
+
+  @Override
+  public boolean equals(Object object) {
+    boolean flag;
+    if (this == object) {
+      flag = true;
+    }
+    else if (object == null) {
+      flag = false;
+    }
+    else if (getClass() != object.getClass()) {
+      flag = false;
+    }
+    else  {
+      final Account other = (Account) object;
+      flag = Objects.equals(this.userId, other.userId);
+    }
+    
+    return flag;
   }
   
 }
