@@ -25,6 +25,9 @@ public class Role {
   @Links(direction = Direction.INCOMING, type = "FULFILLS")
   private Collection<Account> accounts;
 
+  public Role() {
+  }
+
   public Role(Long id) {
     this.id = id;
   }
@@ -51,5 +54,10 @@ public class Role {
 
   public void setAccounts(Collection<Account> accounts) {
     this.accounts = accounts;
+  }
+
+  @Override
+  public String toString() {
+    return "Role[" + "id=" + id + "]";
   }
 }
