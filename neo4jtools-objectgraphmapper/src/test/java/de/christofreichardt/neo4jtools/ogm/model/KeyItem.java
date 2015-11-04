@@ -31,6 +31,9 @@ public class KeyItem {
   @SingleLink(direction = Direction.INCOMING, type = "CONTAINS")
   private Cell<KeyRing> keyRing;
 
+  public KeyItem() {
+  }
+
   public KeyItem(Long id) {
     this.id = id;
   }
