@@ -88,7 +88,7 @@ public class Document {
 
   @Override
   public String toString() {
-    return "Document[" + "id=" + id + "]";
+    return "Document[" + "id=" + this.id + ", title=" + this.title + "]";
   }
 
   @Override
