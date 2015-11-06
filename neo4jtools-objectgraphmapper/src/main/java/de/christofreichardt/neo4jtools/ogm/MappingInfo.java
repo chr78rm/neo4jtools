@@ -96,7 +96,6 @@ public class MappingInfo implements Traceable {
     try {
       XPath xPath = XPathFactory.newInstance().newXPath();
       
-      Set<String> labels = new HashSet<>();
       NodeList nodeEntityNodes = (NodeList) xPath.evaluate("/Mapping/NodeEntity", mappingDocument.getDocumentElement(), XPathConstants.NODESET);
       for (int i=0; i<nodeEntityNodes.getLength(); i++) {
         Element entityElement = (Element) nodeEntityNodes.item(i);
