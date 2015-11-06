@@ -380,13 +380,17 @@ public class Object2NodeMapperUnit implements Traceable {
       keyRing.setKeyItems(keyItems);
       account.setKeyRing(keyRing);
       
-      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
-      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
-        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-        transaction.success();
+      try {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, Object2NodeMapperUnit.graphDatabaseService);
+        try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+          object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+          transaction.success();
+        }
+      }
+      finally {
+        traceAllNodes();
       }
         
-      traceAllNodes();
       checkNodes(4);
     }
     finally {
@@ -441,6 +445,91 @@ public class Object2NodeMapperUnit implements Traceable {
         
       traceAllNodes();
       checkNodes(5);
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void singleLinkConstrainedViolation_1() throws MappingInfo.Exception, Object2NodeMapper.Exception, NoSuchFieldException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "singleLinkConstrainedViolation_1()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Constraint violated.");
+      
+      Account superTester = new Account("Supertester");
+      superTester.setCountryCode("DE");
+      superTester.setLocalityName("Rodgau");
+      superTester.setStateName("Hessen");
+      KeyRing superTesterKeyRing = new KeyRing(0L);
+      superTesterKeyRing.setPath("." + File.separator + "store" + File.separator + "theSuperTesterKeystore.jks");
+      superTester.setKeyRing(superTesterKeyRing);
+      Account tester = new Account("Tester");
+      tester.setCountryCode("DE");
+      tester.setLocalityName("Hainhausen");
+      tester.setStateName("Hessen");
+      tester.setKeyRing(superTesterKeyRing);
+      
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        object2NodeMapper = new Object2NodeMapper(tester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void singleLinkConstrainedViolation_2() throws MappingInfo.Exception, Object2NodeMapper.Exception, NoSuchFieldException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "singleLinkConstrainedViolation_2()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Constraint violated.");
+      
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account superTester = new Account("Supertester");
+      superTester.setCountryCode("DE");
+      superTester.setLocalityName("Rodgau");
+      superTester.setStateName("Hessen");
+      KeyRing superTesterKeyRing = new KeyRing(0L);
+      superTesterKeyRing.setPath("." + File.separator + "store" + File.separator + "theSuperTesterKeystore.jks");
+      superTester.setKeyRing(superTesterKeyRing);
+      KeyItem keyItem = new KeyItem(0L);
+      keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem.setCreationDate(formattedTime);
+      superTesterKeyRing.setKeyItems(new ArrayList<>());
+      superTesterKeyRing.getKeyItems().add(keyItem);
+      Account tester = new Account("Tester");
+      tester.setCountryCode("DE");
+      tester.setLocalityName("Hainhausen");
+      tester.setStateName("Hessen");
+      tester.setKeyRing(superTesterKeyRing);
+      KeyRing testerKeyRing = new KeyRing(1L);
+      testerKeyRing.setPath("." + File.separator + "store" + File.separator + "theTesterKeystore.jks");
+      tester.setKeyRing(testerKeyRing);
+      testerKeyRing.setKeyItems(new ArrayList<>());
+      testerKeyRing.getKeyItems().add(keyItem);
+      
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        object2NodeMapper = new Object2NodeMapper(tester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      traceAllNodes();
     }
     finally {
       tracer.wayout();
