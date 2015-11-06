@@ -15,7 +15,7 @@
       <Context>
         <Thread name="main">
           <Online>true</Online>
-          <DebugLevel>10</DebugLevel>
+          <DebugLevel>15</DebugLevel>
         </Thread>
       </Context>
     </TraceLogger>
