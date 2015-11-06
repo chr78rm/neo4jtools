@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
@@ -184,22 +185,25 @@ public class Object2NodeMapper implements Traceable {
             Collection<?> linkedEntities = (Collection<?>) linkField.get(this.entity);
             if (linkedEntities != null) {
               String idFieldName = this.mappingInfo.getPrimaryKeyMapping(linkedEntityClass).getFieldName();
-              Field idField = linkedEntityClass.getDeclaredField(idFieldName);
+              Field idField = linkedEntityClass.getDeclaredField(idFieldName); // TODO: ReflectedClass.getDeclaredField would be safer
               idField.setAccessible(true);
               
               for (Object linkedEntity : linkedEntities) {
                 tracer.out().printfIndentln("linkedEntity = %s", linkedEntity);
 
                 Object primaryKeyValue = handleIdField(linkedEntityClass, linkedEntity, idField);
+                Node linkedEntityNode;
+                Relationship relationship;
                 if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKeyValue)) {
                   Object2NodeMapper object2NodeMapper = new Object2NodeMapper(linkedEntity, this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
-                  Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
-                  entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                  linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
+                  relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
                 }
                 else {
-                  Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
-                  entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                  linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
+                  relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
                 }
+                checkSingleLinkConstraints(linkedEntityClass, relationship, linkedEntityNode, relationshipTypes);
               }
             }
             else {
@@ -267,18 +271,21 @@ public class Object2NodeMapper implements Traceable {
               tracer.out().printfIndentln("linkedEntity = %s", cell.getEntity());
               
               String idFieldName = this.mappingInfo.getPrimaryKeyMapping(linkedEntityClass).getFieldName();
-              Field idField = linkedEntityClass.getDeclaredField(idFieldName);
+              Field idField = linkedEntityClass.getDeclaredField(idFieldName); // TODO: ReflectedClass.getDeclaredField would be safer
               idField.setAccessible(true);
               Object primaryKeyValue = handleIdField(linkedEntityClass, cell.getEntity(), idField);
+              Node linkedEntityNode;
+              Relationship relationship;
               if (!this.processingEntityIds2NodeMap.get(linkedEntityClass).containsKey(primaryKeyValue)) {
                 Object2NodeMapper object2NodeMapper = new Object2NodeMapper(cell.getEntity(), this.mappingInfo, this.graphDatabaseService, this.processingEntityIds2NodeMap);
-                Node linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
-                entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                linkedEntityNode = object2NodeMapper.map(labels, relationshipTypes);
+                relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
               else {
-                Node linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
-                entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
+                linkedEntityNode = this.processingEntityIds2NodeMap.get(linkedEntityClass).get(primaryKeyValue);
+                relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
+              checkSingleLinkConstraints(linkedEntityClass, relationship, linkedEntityNode, relationshipTypes);
             }
             else {
               // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
@@ -328,6 +335,27 @@ public class Object2NodeMapper implements Traceable {
       }
       catch (IllegalAccessException ex) {
         throw new RuntimeException(ex); // should be impossible since the field has been made accessible
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  private <T extends Enum<T> & RelationshipType> 
+    void checkSingleLinkConstraints(Class<?> linkedEntityClass, Relationship relationship, Node linkedEntityNode, Class<T> relationshipTypes) 
+        throws ClassNotFoundException, Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "checkSingleLinkConstraints(Class<?> linkedEntityClass, Relationship relationship, Node linkedEntityNode, Class<T> relationshipTypes)");
+    
+    try {
+      Set<Map.Entry<String, SingleLinkData>> reverseSingleLinkMappings = this.mappingInfo.getSingleLinkMappings(linkedEntityClass)
+          .stream()
+          .filter(mapping -> mapping.getValue().getType().equals(relationship.getType().name()))
+          .collect(Collectors.toSet());
+      for (Map.Entry<String, SingleLinkData> reverseSingleLinkMapping : reverseSingleLinkMappings) {
+        if (!reverseSingleLinkMapping.getValue().checkConstraint(linkedEntityNode, relationshipTypes, this.mappingInfo))
+          throw new Object2NodeMapper.Exception(reverseSingleLinkMapping + " Constraint violated.");
       }
     }
     finally {
