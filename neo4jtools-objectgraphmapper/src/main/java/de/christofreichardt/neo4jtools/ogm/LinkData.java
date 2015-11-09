@@ -40,6 +40,10 @@ public class LinkData implements Traceable {
   public String getEntityClassName() {
     return linkedEntityClassName;
   }
+
+  public Class<?> getLinkedEntityClass() {
+    return linkedEntityClass;
+  }
   
   public boolean matches(Class<?> startClass, Relationship relationship, Direction direction) {
     AbstractTracer tracer = getCurrentTracer();

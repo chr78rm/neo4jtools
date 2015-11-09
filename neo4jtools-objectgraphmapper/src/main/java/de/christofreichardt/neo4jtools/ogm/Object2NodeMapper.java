@@ -87,15 +87,19 @@ public class Object2NodeMapper implements Traceable {
         Node entityNode = this.graphDatabaseService.findNode(Enum.valueOf(labels, this.label), idPropertyKey, primaryKeyValue);
         if (entityNode == null) {
           tracer.out().printfIndentln("Saving ...");
+          
           entityNode = this.graphDatabaseService.createNode(Enum.valueOf(labels, this.label));
           for (String mappedLabel : this.mappingInfo.getLabels(this.entityClass)) {
             entityNode.addLabel(Enum.valueOf(labels, mappedLabel));
           }
         }
-        else
+        else {
           tracer.out().printfIndentln("Merging ...");
+          
+          // TODO: check for staleness
+          entityNode.getRelationships(Direction.OUTGOING).forEach(relationship -> relationship.delete());
+        }
         
-        // TODO: check for staleness
         
         this.processingEntityIds2NodeMap.get(this.entityClass).put(primaryKeyValue, entityNode);
         entityNode = coverProperties(entityNode);
@@ -171,14 +175,8 @@ public class Object2NodeMapper implements Traceable {
           linkField.setAccessible(true);
           if (followLinks(linkField, linkData)) {
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
-            entityNode.getRelationships(Direction.OUTGOING, relationshipType).forEach(relationShip -> {
-              boolean matched = linkData.matches(this.entityClass, relationShip, Direction.OUTGOING);
-              tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
-              if (matched)
-                relationShip.delete();
-            });
             
-            Class<?> linkedEntityClass = Class.forName(linkData.getEntityClassName());
+            Class<?> linkedEntityClass = linkData.getLinkedEntityClass();
             if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
               this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
             
@@ -205,9 +203,6 @@ public class Object2NodeMapper implements Traceable {
                 }
                 checkSingleLinkConstraints(linkedEntityClass, relationship, linkedEntityNode, relationshipTypes);
               }
-            }
-            else {
-              // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
             }
           }
         }
@@ -254,15 +249,6 @@ public class Object2NodeMapper implements Traceable {
               throw new Object2NodeMapper.Exception("Entity required for " + singleLinkData);
             
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, singleLinkData.getType());
-            Relationship singleRelationship = entityNode.getSingleRelationship(relationshipType, Direction.OUTGOING);
-            if (singleRelationship != null) {
-              boolean matched = singleLinkData.matches(this.entityClass, singleRelationship, Direction.OUTGOING);
-              tracer.out().printfIndentln("%s matched: %b", singleRelationship, matched);
-              if (matched) {
-                singleRelationship.delete();
-              }
-            }
-            
             Class<?> linkedEntityClass = Class.forName(singleLinkData.getEntityClassName());
             if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
               this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
@@ -286,9 +272,6 @@ public class Object2NodeMapper implements Traceable {
                 relationship = entityNode.createRelationshipTo(linkedEntityNode, relationshipType);
               }
               checkSingleLinkConstraints(linkedEntityClass, relationship, linkedEntityNode, relationshipTypes);
-            }
-            else {
-              // TODO: Should the referenced end nodes of the matched relationships (recursively?!) deleted? Think about it.
             }
           }
         }
