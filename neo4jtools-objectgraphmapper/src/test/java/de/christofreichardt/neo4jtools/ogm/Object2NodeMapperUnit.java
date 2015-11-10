@@ -9,6 +9,7 @@ import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Account1;
 import de.christofreichardt.neo4jtools.ogm.model.Account2;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
+import de.christofreichardt.neo4jtools.ogm.model.EncryptedDocument;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem1;
 import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
@@ -530,6 +531,49 @@ public class Object2NodeMapperUnit implements Traceable {
         transaction.success();
       }
       traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void staleData() throws MappingInfo.Exception, Object2NodeMapper.Exception, NoSuchFieldException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "staleData()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Stale data.");
+      
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      Account superTester = new Account("Supertester");
+      superTester.setCountryCode("DE");
+      superTester.setLocalityName("Rodgau");
+      superTester.setStateName("Hessen");
+      superTester.setDocuments(new ArrayList<>());
+      EncryptedDocument document = new EncryptedDocument(0L);
+      document.setAccount(superTester);
+      document.setTitle("Testdocument-1");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      superTester.getDocuments().add(document);
+      
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
+      
+      traceAllNodes();
+      
+      try (Transaction transaction = Object2NodeMapperUnit.graphDatabaseService.beginTx()) {
+        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(superTester, Object2NodeMapperUnit.graphDatabaseService);
+        object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        transaction.success();
+      }
     }
     finally {
       tracer.wayout();
