@@ -394,26 +394,25 @@ public class MappingInfo implements Traceable {
   }
   
   public String getVersionFieldName(Class<?> entityClass) {
-    AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("String", this, "getVersionFieldName(Class<?> entityClass)");
-
-    try {
-      tracer.out().printfIndentln("entityClass.getName() = %s", entityClass.getName());
-      
-      if (!entityClass.isAnnotationPresent(NodeEntity.class))
-        throw new IllegalArgumentException("No entity class: '" + entityClass.getName() + "'");
-      
-      Element entityElement = this.entityMap.get(entityClass.getName());
-      
-      String versionFieldName = null;
-      if (this.versionFieldMap.containsKey(entityElement))
-        versionFieldName = this.versionFieldMap.get(entityElement);
-      
-      return versionFieldName;
-    }
-    finally {
-      tracer.wayout();
-    }
+    if (!this.entityMap.containsKey(entityClass.getName()))
+      throw new IllegalArgumentException("Unknown class: '" + entityClass.getName() + "'.");
+    
+    String fieldName = null;
+    Element entityElement = this.entityMap.get(entityClass.getName());
+    do {
+      if (this.versionFieldMap.containsKey(entityElement)) {
+        fieldName = this.versionFieldMap.get(entityElement);
+        break;
+      }
+      else if (entityElement.hasAttribute("isSubClassOf")) {
+        String superClassName = entityElement.getAttribute("isSubClassOf");
+        entityElement = this.entityMap.get(superClassName);
+      }
+      else
+        break;
+    } while (true);
+    
+    return fieldName;
   }
   
   public Set<String> getLabels(Class<?> entityClass) {
