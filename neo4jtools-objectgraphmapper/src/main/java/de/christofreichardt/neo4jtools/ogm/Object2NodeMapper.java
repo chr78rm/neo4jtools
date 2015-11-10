@@ -15,6 +15,7 @@ import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.neo4j.graphdb.Direction;
@@ -96,10 +97,10 @@ public class Object2NodeMapper implements Traceable {
         else {
           tracer.out().printfIndentln("Merging ...");
           
-          // TODO: check for staleness
+          if (checkStaleness(entityNode))
+            throw new Object2NodeMapper.Exception("Stale data.");
           entityNode.getRelationships(Direction.OUTGOING).forEach(relationship -> relationship.delete());
         }
-        
         
         this.processingEntityIds2NodeMap.get(this.entityClass).put(primaryKeyValue, entityNode);
         entityNode = coverProperties(entityNode);
@@ -116,12 +117,65 @@ public class Object2NodeMapper implements Traceable {
       tracer.wayout();
     }
   }
+    
+  private boolean checkStaleness(final Node entityNode) throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("boolean", this, "checkStaleness(final Node entityNode)");
+
+    try {
+      boolean flag = false;
+      String versionFieldName = this.mappingInfo.getVersionFieldName(this.entityClass);
+      if (versionFieldName != null) {
+        PropertyData propertyData = this.mappingInfo.getPropertyMappingForField(versionFieldName, this.entityClass);
+
+        tracer.out().printfIndentln("propertyData == %s", propertyData);
+        tracer.out().printfIndentln("entityNode.hasProperty(%s) == %b", propertyData.getName(), entityNode.hasProperty(propertyData.getName()));
+
+        try {
+          entityNode.setProperty("__dummy_property_for_write_lock", "");
+          if (entityNode.hasProperty(propertyData.getName())) {
+            Field versionField = this.reflectedClass.getDeclaredField(versionFieldName);
+            versionField.setAccessible(true);
+            if (!Integer.class.equals(versionField.getType())) {
+              throw new Object2NodeMapper.Exception("Unsupported field type for versioning.");
+            }
+            Integer versionCriterion = (Integer) entityNode.getProperty(propertyData.getName());
+            Integer actualVersion = (Integer) versionField.get(this.entity);
+            
+            tracer.out().printfIndentln("versionCriterion = %d, actualVersion = %d", versionCriterion, actualVersion);
+            
+            if (actualVersion != null) {
+              if (actualVersion < versionCriterion)
+                flag = true;
+            }
+            else {
+              versionField.set(this.entity, 0);
+            }
+          }
+        }
+        catch (NoSuchFieldException ex) {
+        }
+        catch (IllegalAccessException ex) {
+          throw new Error(ex); // should be impossible since the field has been made accessible
+        }
+        finally {
+          entityNode.removeProperty("__dummy_property_for_write_lock");
+        }
+      }
+      
+      return flag;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
   
   private Node coverProperties(final Node entityNode) throws Object2NodeMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("Node", this, "coverProperties(final Node entityNode)");
     
     try {
+      String versionFieldName = this.mappingInfo.getVersionFieldName(this.entityClass);
       Set<Map.Entry<String, PropertyData>> propertyMappings = this.mappingInfo.getPropertyMappings(this.entityClass);
       for (Map.Entry<String, PropertyData> propertyMapping : propertyMappings) {
         try {
@@ -136,10 +190,16 @@ public class Object2NodeMapper implements Traceable {
           if (property == null  &&  !propertyData.isNullable()) 
             throw new Object2NodeMapper.Exception("Value required for property '" + fieldName + "'.");
           
-          if (property == null  &&  entityNode.hasProperty(propertyData.getName()))
-            entityNode.removeProperty(propertyData.getName());
-          else if (property != null )
-            entityNode.setProperty(propertyData.getName(), property);
+          if (!Objects.equals(versionFieldName, fieldName)) {
+            if (property == null  &&  entityNode.hasProperty(propertyData.getName()))
+              entityNode.removeProperty(propertyData.getName());
+            else if (property != null )
+              entityNode.setProperty(propertyData.getName(), property);
+          }
+          else {
+            Integer actualVersion = (Integer) property;
+            entityNode.setProperty(propertyData.getName(), actualVersion + 1);
+          }
         }
         catch (NoSuchFieldException ex) {
           tracer.logException(LogLevel.ERROR, ex, getClass(), "coverProperties(final Node entityNode)");
