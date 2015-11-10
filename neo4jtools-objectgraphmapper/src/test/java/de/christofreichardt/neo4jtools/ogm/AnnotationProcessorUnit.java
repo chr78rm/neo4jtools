@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.Properties;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -21,6 +22,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -97,13 +99,16 @@ public class AnnotationProcessorUnit implements Traceable {
       for (String className : classNames) {
         tracer.out().printfIndentln("className = %s", className);
         
-        NodeList propertyNameNodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity[@className='" + className + "']/:Property/@name"
-            , this.mappingDocument.getDocumentElement()
-            , XPathConstants.NODESET);
+        NodeList propertyNodes = (NodeList) xPath.evaluate("/:Mapping/:NodeEntity[@className='" + className + "']/:Property", 
+            this.mappingDocument.getDocumentElement(), 
+            XPathConstants.NODESET);
 
-        tracer.out().printfIndentln("nodes.getLength() = %d", propertyNameNodes.getLength());
-        for (int i=0; i<propertyNameNodes.getLength(); i++) {
-          tracer.out().printfIndentln("propertyName = %s", propertyNameNodes.item(i).getNodeValue());
+        tracer.out().printfIndentln("propertyNodes.getLength() = %d", propertyNodes.getLength());
+        for (int i=0; i<propertyNodes.getLength(); i++) {
+          Element propertyElement = (Element) propertyNodes.item(i);
+          tracer.out().printfIndentln("propertyName = %s, version = %b", 
+              propertyElement.getAttribute("name"), 
+              Objects.equals("true", propertyElement.getAttribute("version")));
         }
       }
     }
