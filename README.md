@@ -53,6 +53,7 @@ public class Account {
   @Property(name = "commonName")
   private String userId;
 ...
+}
 ```
 
 maps the String field `userId` onto the mentioned property `commonName`. Assuming an object identity given by a `Long` field, ids can
@@ -66,4 +67,5 @@ public class Document {
   @GeneratedValue
   private Long id;
 ...
+}
 ```
