@@ -13,7 +13,8 @@ import org.junit.runners.Suite;
   AnnotationProcessorUnit.class,
   MappingInfoUnit.class,
   Object2NodeMapperUnit.class,
-  Node2ObjectMapperUnit.class
+  Node2ObjectMapperUnit.class,
+  ObjectGraphMapperUnit.class
 })
 public class ObjectGraphMapperSuite {
 
