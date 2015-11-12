@@ -69,3 +69,91 @@ public class Document {
 ...
 }
 ```
+
+## Mapping relationships
+
+Neo4jtools provides two different annotations to model relationships: `Links` and `SingleLink`. With combinations of these annotations someone
+is able to map one-to-many, many-to-many and one-to-one relationships.
+
+### one-to-many
+
+An example for a one-to-many relationship is the relationship between a Keyring and its Keyitems. From a perspective of a graph database, 
+a Keyring node might have zero, one or multiple (directed) `contains` edges leading to Keyitem nodes. On the other hand every Keyitem
+node exhibits exactly one `contains` edge incoming from a Keyring node. The Keyring entity class makes use of the `Links` annotation whereas 
+the Keyitem entity class utilizes the `SingleLink`, see the example below:
+
+```java
+@NodeEntity(label = "KEY_RINGS")
+public class KeyRing {
+...
+  @Links(direction = Direction.OUTGOING, type = "CONTAINS")
+  private Collection<KeyItem> keyItems;
+...
+}
+```
+
+The data type of field annotated with a `SingleLink` is Cell<?>. This is a container which is able to hold a single entity. There is a reason for
+not using directly entity types: Consider the loading of an entity instance from the graph database. All fields annotated with
+`Links` and `SingleLink`s will initially preset with proxy objects. Otherwise such a load may resolve the whole database.
+
+```java
+@NodeEntity(label = "KEY_ITEMS")
+public class KeyItem {
+...
+  @SingleLink(direction = Direction.INCOMING, type = "CONTAINS")
+  private Cell<KeyRing> keyRing;
+}
+```
+
+### many-to-many
+
+Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `fulfills`
+edges leading to various Role nodes whereas a certain Role node might has multiple incoming `fulfills` edges from different Account nodes:
+
+```java
+@NodeEntity(label = "ACCOUNTS")
+public class Account {
+...  
+  @Links(direction = Direction.OUTGOING, type = "FULFILLS")
+  private Collection<Role> roles;
+}
+```
+
+```java
+@NodeEntity(label = "ROLES")
+public class Role {
+...
+  @Links(direction = Direction.INCOMING, type = "FULFILLS")
+  private Collection<Account> accounts;
+...
+}
+```
+
+### one-to-one
+
+As one might expect, one-to-one relationships are modelled with `SingleLink`s on both sides. An example for a one-to-one 
+relationship is the association between an Account and its Keyring. Whereas an Account didn't need necessarily a Keyring,
+a Keyring comes only together with an Account. That is, the `SingleLink` on the Account side is nullable:
+
+```java
+@NodeEntity(label = "ACCOUNTS")
+public class Account {
+...  
+  @SingleLink(direction = Direction.OUTGOING, type = "OWNS", nullable = true)
+  private Cell<KeyRing> keyRing;
+...
+}
+```
+
+```java
+@NodeEntity(label = "KEY_RINGS")
+public class KeyRing {
+...
+  @SingleLink(direction = Direction.INCOMING, type = "OWNS")
+  private Cell<Account> account;
+...
+}
+```
+
+
+
