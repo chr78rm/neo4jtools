@@ -92,9 +92,9 @@ public class KeyRing {
 }
 ```
 
-The data type of field annotated with a `SingleLink` is Cell<?>. This is a container which is able to hold a single entity. There is a reason for
+The data type of a field annotated with a `SingleLink` is Cell<?>. This is a container which is able to hold a single entity. There is a reason for
 not using directly entity types: Consider the loading of an entity instance from the graph database. All fields annotated with
-`Links` and `SingleLink`s will initially preset with proxy objects. Otherwise such a load may resolve the whole database.
+`Links` and `SingleLink`s will initially preset with proxy objects. Otherwise such a load might resolve the whole database.
 
 ```java
 @NodeEntity(label = "KEY_ITEMS")
