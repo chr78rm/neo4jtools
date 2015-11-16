@@ -71,7 +71,7 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         
         Document document;
         final Long DOCUMENT_ID = 8L;
-        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper(new MappingInfo(), 
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
             ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
           document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
