@@ -415,6 +415,15 @@ public class MappingInfo implements Traceable {
     return fieldName;
   }
   
+  public <S extends Enum<S> & Label> S getSpecificLabel(Class<?> entityClass, Class<S> labels) {
+    String className = entityClass.getName();
+    if (!this.entityMap.containsKey(className))
+      throw new IllegalArgumentException("Unknown class: '" + className + "'.");
+    
+    String label = this.entityMap.get(className).getAttribute("label");
+    return Enum.valueOf(labels, label);
+  }
+  
   public Set<String> getLabels(Class<?> entityClass) {
     String className = entityClass.getName();
     if (!this.entityMap.containsKey(className))
