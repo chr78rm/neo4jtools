@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Test;
+import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
 /**
@@ -51,16 +52,15 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
         String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         final int TEST_DOCUMENTS = 10;
-        List<Document> documents = new ArrayList<>();
+        account.setDocuments(new ArrayList<>());
         for (int i = 0; i < TEST_DOCUMENTS; i++) {
           Document document = new Document();
           document.setAccount(account);
           document.setTitle("Testdocument-" + i);
           document.setType("pdf");
           document.setCreationDate(formattedTime);
-          documents.add(document);
+          account.getDocuments().add(document);
         }
-        account.setDocuments(documents);
         
         Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, ObjectGraphMapperUnit.graphDatabaseService);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
@@ -69,17 +69,66 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         }
         traceAllNodes();
         
-        Document document;
         final Long DOCUMENT_ID = 8L;
         ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
             ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          Document document;
           document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+
+          tracer.out().printfIndentln("document = %s", document);
+          Assert.assertTrue("Wrong Document.", Objects.equals(DOCUMENT_ID, document.getId()));
+          tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
+          tracer.out().printfIndentln("document.getAccount().getDocuments().size() = %d", document.getAccount().getDocuments().size());
+          document.getAccount().getDocuments().forEach(doc -> tracer.out().printfIndentln("doc = %s", doc));
+          
           transaction.success();
         }
-
-        tracer.out().printfIndentln("document = %s", document);
-        Assert.assertTrue("Wrong Document.", Objects.equals(DOCUMENT_ID, document.getId()));
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void saveAndLoad() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "saveAndLoad()");
+    
+    try {
+      try {
+        IdGeneratorService.getInstance().init(ObjectGraphMapperUnit.graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().start();
+        
+        Account account = new Account("Tester");
+        account.setCountryCode("DE");
+        account.setLocalityName("Rodgau");
+        account.setStateName("Hessen");
+        LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+        String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        final int TEST_DOCUMENTS = 10;
+        account.setDocuments(new ArrayList<>());
+        for (int i = 0; i < TEST_DOCUMENTS; i++) {
+          Document document = new Document();
+          document.setAccount(account);
+          document.setTitle("Testdocument-" + i);
+          document.setType("pdf");
+          document.setCreationDate(formattedTime);
+          account.getDocuments().add(document);
+        }
+        
+        Node node;
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
+            ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          node = objectGraphMapper.save(account);
+          transaction.success();
+        }
+        traceAllNodes();
       }
       finally {
         IdGeneratorService.getInstance().shutDown();
