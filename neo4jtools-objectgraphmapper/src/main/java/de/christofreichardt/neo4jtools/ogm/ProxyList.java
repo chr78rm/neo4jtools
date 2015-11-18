@@ -39,6 +39,24 @@ public class ProxyList<T extends Enum<T> & RelationshipType> implements Collecti
     this.mappingInfo = mappingInfo;
     this.relationshipTypes = relationshipTypes;
     this.startClass = startClass;
+    traceNode();
+  }
+  
+  private void traceNode() {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "traceNode()");
+    
+    try {
+      RichNode richNode = new RichNode(this.node);
+      richNode.trace(tracer);
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  public boolean isLoaded() {
+    return this.entities != null;
   }
   
   private void loadEntities() {
@@ -47,6 +65,7 @@ public class ProxyList<T extends Enum<T> & RelationshipType> implements Collecti
     
     try {
       tracer.out().printfIndentln("this.linkData = %s", this.linkData);
+      traceNode();
       
       this.entities = new ArrayList<>();
       RelationshipType relationshipType = Enum.valueOf(this.relationshipTypes, this.linkData.getType());
@@ -69,6 +88,8 @@ public class ProxyList<T extends Enum<T> & RelationshipType> implements Collecti
             this.entities.add(linkedEntity);
           }
         }
+        
+        tracer.out().printfIndentln("this.entities.size() = %d", this.entities.size());
       }
       catch (Node2ObjectMapper.Exception ex) {
         throw new RuntimeException("Problems when loading the entities.", ex);
