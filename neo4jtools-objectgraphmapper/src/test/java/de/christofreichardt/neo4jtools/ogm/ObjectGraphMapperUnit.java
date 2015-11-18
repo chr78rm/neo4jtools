@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.Properties;
 import org.junit.Assert;
 import org.junit.Test;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Transaction;
 
@@ -36,9 +37,9 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
   }
   
   @Test
-  public void loadEntity() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+  public void roundTrip() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("void", this, "loadEntity()");
+    tracer.entry("void", this, "roundTrip()");
     
     try {
       try {
@@ -51,7 +52,7 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         account.setStateName("Hessen");
         LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
         String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        final int TEST_DOCUMENTS = 10;
+        final int TEST_DOCUMENTS = 5;
         account.setDocuments(new ArrayList<>());
         for (int i = 0; i < TEST_DOCUMENTS; i++) {
           Document document = new Document();
@@ -69,7 +70,7 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         }
         traceAllNodes();
         
-        final Long DOCUMENT_ID = 8L;
+        final Long DOCUMENT_ID = 3L;
         ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
             ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
@@ -79,10 +80,19 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
           tracer.out().printfIndentln("document = %s", document);
           Assert.assertTrue("Wrong Document.", Objects.equals(DOCUMENT_ID, document.getId()));
           tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
-          tracer.out().printfIndentln("document.getAccount().getDocuments().size() = %d", document.getAccount().getDocuments().size());
-          document.getAccount().getDocuments().forEach(doc -> tracer.out().printfIndentln("doc = %s", doc));
+          
+          objectGraphMapper.save(document.getAccount());
           
           transaction.success();
+        }
+        traceAllNodes();
+        
+        try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+
+          Assert.assertNotNull("Expected an account node", accountNode);
+          Assert.assertTrue("Expected " + TEST_DOCUMENTS + " outgoing relationships to documents.", 
+              accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS);
         }
       }
       finally {
