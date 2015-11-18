@@ -99,7 +99,6 @@ public class Object2NodeMapper implements Traceable {
           
           if (checkStaleness(entityNode))
             throw new Object2NodeMapper.Exception("Stale data.");
-          entityNode.getRelationships(Direction.OUTGOING).forEach(relationship -> relationship.delete());
         }
         
         this.processingEntityIds2NodeMap.get(this.entityClass).put(primaryKeyValue, entityNode);
@@ -154,6 +153,7 @@ public class Object2NodeMapper implements Traceable {
           }
         }
         catch (NoSuchFieldException ex) {
+          throw new Object2NodeMapper.Exception("Invalid mapping definition.", ex);
         }
         catch (IllegalAccessException ex) {
           throw new Error(ex); // should be impossible since the field has been made accessible
@@ -236,6 +236,14 @@ public class Object2NodeMapper implements Traceable {
           if (followLinks(linkField, linkData)) {
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, linkData.getType());
             
+            entityNode.getRelationships(Direction.OUTGOING, relationshipType).forEach(relationShip -> {
+              boolean matched = linkData.matches(this.entityClass, relationShip, Direction.OUTGOING);
+              tracer.out().printfIndentln("%s matched: %b", relationShip, matched);
+              if (matched) {
+                relationShip.delete();
+              }
+            });
+            
             Class<?> linkedEntityClass = linkData.getLinkedEntityClass();
             if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
               this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
@@ -282,8 +290,32 @@ public class Object2NodeMapper implements Traceable {
     }
   }
     
-  private boolean followLinks(Field linkField, LinkData linkData) {
-    return linkData.getDirection() == Direction.OUTGOING;
+  private boolean followLinks(Field linkField, LinkData linkData) throws IllegalAccessException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("boolean", this, "followLinks(Field linkField, LinkData linkData)");
+    
+    try {
+      boolean flag;
+      if (linkData.getDirection() == Direction.OUTGOING) {
+        Collection<?> collection = (Collection<?>) linkField.get(this.entity);
+        if (collection == null) {
+          flag = true;
+        }
+        else if (collection instanceof ProxyList) {
+          ProxyList<?> proxyList = (ProxyList<?>) collection;
+          flag = proxyList.isLoaded();
+        }
+        else
+          flag = true;
+      }
+      else
+        flag = false;
+      
+      return flag;
+   }
+    finally {
+      tracer.wayout();
+    }
   }
   
   private <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType>
@@ -309,6 +341,14 @@ public class Object2NodeMapper implements Traceable {
               throw new Object2NodeMapper.Exception("Entity required for " + singleLinkData);
             
             RelationshipType relationshipType = Enum.valueOf(relationshipTypes, singleLinkData.getType());
+            Relationship singleRelationship = entityNode.getSingleRelationship(relationshipType, Direction.OUTGOING);
+            if (singleRelationship != null) {
+              boolean matched = singleLinkData.matches(this.entityClass, singleRelationship, Direction.OUTGOING);
+              tracer.out().printfIndentln("%s matched: %b", singleRelationship, matched);
+              if (matched) {
+                singleRelationship.delete();
+              }
+            }
             Class<?> linkedEntityClass = Class.forName(singleLinkData.getEntityClassName());
             if (!this.processingEntityIds2NodeMap.containsKey(linkedEntityClass))
               this.processingEntityIds2NodeMap.put(linkedEntityClass, new HashMap<>());
