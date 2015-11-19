@@ -123,7 +123,8 @@ public class MappingInfo implements Traceable {
             String propertyName = ((Element) propertyNodes.item(i)).getAttribute("name");
             Boolean propertyNullable = Boolean.valueOf(((Element) propertyNodes.item(i)).getAttribute("nullable"));
             Boolean propertyVersion = Boolean.valueOf(((Element) propertyNodes.item(i)).getAttribute("version"));
-            PropertyData propertyData = new PropertyData(propertyName, propertyNullable, propertyVersion);
+            Class<?> clazz = Class.forName((String) xPath.evaluate("Field/@class", propertyNodes.item(i), XPathConstants.STRING));
+            PropertyData propertyData = new PropertyData(propertyName, propertyNullable, propertyVersion, clazz);
             org.w3c.dom.Node fieldNode = (org.w3c.dom.Node) xPath.evaluate("Field", propertyNodes.item(i), XPathConstants.NODE);
             String fieldName = ((Element) fieldNode).getAttribute("name");
             this.fieldMap.get(entityElement).put(fieldName, propertyData);
