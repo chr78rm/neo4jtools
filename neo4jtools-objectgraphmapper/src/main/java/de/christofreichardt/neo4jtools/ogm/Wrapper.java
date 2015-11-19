@@ -17,5 +17,10 @@ public class Wrapper<T> implements Cell<T> {
   public T getEntity() {
     return this.entity;
   }
+
+  @Override
+  public boolean isLoaded() {
+    return true;
+  }
   
 }

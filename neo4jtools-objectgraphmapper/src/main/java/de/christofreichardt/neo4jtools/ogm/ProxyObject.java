@@ -18,6 +18,7 @@ import org.neo4j.graphdb.RelationshipType;
 /**
  *
  * @author Christof Reichardt
+ * @param <T>
  */
 public class ProxyObject<T extends Enum<T> & RelationshipType> implements Cell<Object>, Serializable, Traceable {
   transient final private Node node;
@@ -25,6 +26,7 @@ public class ProxyObject<T extends Enum<T> & RelationshipType> implements Cell<O
   transient final private MappingInfo mappingInfo;
   transient final private Class<T> relationshipTypes;
   transient final private Class<?> startClass;
+  transient private boolean loaded = false;
   
   private Object entity;
 
@@ -34,6 +36,24 @@ public class ProxyObject<T extends Enum<T> & RelationshipType> implements Cell<O
     this.mappingInfo = mappingInfo;
     this.relationshipTypes = relationshipTypes;
     this.startClass = startClass;
+    traceNode();
+  }
+
+  public boolean isLoaded() {
+    return loaded;
+  }
+  
+  private void traceNode() {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "traceNode()");
+    
+    try {
+      RichNode richNode = new RichNode(this.node);
+      richNode.trace(tracer);
+    }
+    finally {
+      tracer.wayout();
+    }
   }
 
   @Override
@@ -74,6 +94,8 @@ public class ProxyObject<T extends Enum<T> & RelationshipType> implements Cell<O
         
         if (!this.singleLinkData.isNullable()  &&  this.entity == null)
           throw new RuntimeException("Value required for " + this.singleLinkData + ".");
+        
+        this.loaded = true;
       }
       catch (Node2ObjectMapper.Exception ex) {
         throw new RuntimeException("Problems when loading the entity.", ex);

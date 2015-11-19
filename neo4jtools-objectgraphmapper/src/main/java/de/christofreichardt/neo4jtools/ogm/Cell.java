@@ -10,4 +10,5 @@ package de.christofreichardt.neo4jtools.ogm;
  */
 public interface Cell<T> {
   T getEntity();
+  boolean isLoaded();
 }
