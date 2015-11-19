@@ -102,6 +102,14 @@ public class KeyItem {
 ...
   @SingleLink(direction = Direction.INCOMING, type = "CONTAINS")
   private Cell<KeyRing> keyRing;
+...
+  public KeyRing getKeyRing() {
+    return this.keyRing != null ? this.keyRing.getEntity() : null;
+  }
+  public void setKeyRing(KeyRing keyRing) {
+    this.keyRing = new Wrapper<>(keyRing);
+  }
+...
 }
 ```
 
