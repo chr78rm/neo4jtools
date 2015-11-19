@@ -15,13 +15,21 @@ import org.neo4j.graphdb.RelationshipType;
  * @param <T>
  */
 public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> implements Traceable {
-  final private MappingInfo mappingInfo;
+  static private MappingInfo mappingInfo;
+  static {
+    try {
+      ObjectGraphMapper.mappingInfo = new MappingInfo();
+    }
+    catch (MappingInfo.Exception ex) {
+      throw new Error(ex);
+    }
+  }
+  
   final private GraphDatabaseService graphDatabaseService;
   final private Class<S> labels;
   final private Class<T> relationshipTypes;
 
-  public ObjectGraphMapper(MappingInfo mappingInfo, GraphDatabaseService graphDatabaseService, Class<S> labels, Class<T> relationshipTypes) {
-    this.mappingInfo = mappingInfo;
+  public ObjectGraphMapper(GraphDatabaseService graphDatabaseService, Class<S> labels, Class<T> relationshipTypes) {
     this.graphDatabaseService = graphDatabaseService;
     this.labels = labels;
     this.relationshipTypes = relationshipTypes;
@@ -35,11 +43,11 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
       tracer.out().printfIndentln("entityClass = %s", entityClass.getName());
       tracer.out().printfIndentln("key = %s", primaryKeyValue);
       
-      PrimaryKeyData primaryKeyData = this.mappingInfo.getPrimaryKeyMapping(entityClass);
-      S specificLabel = this.mappingInfo.getSpecificLabel(entityClass, this.labels);
-      PropertyData propertyData = this.mappingInfo.getPropertyMappingForField(primaryKeyData.getFieldName(), entityClass);
+      PrimaryKeyData primaryKeyData = ObjectGraphMapper.mappingInfo.getPrimaryKeyMapping(entityClass);
+      S specificLabel = ObjectGraphMapper.mappingInfo.getSpecificLabel(entityClass, this.labels);
+      PropertyData propertyData = ObjectGraphMapper.mappingInfo.getPropertyMappingForField(primaryKeyData.getFieldName(), entityClass);
       Node entityNode = this.graphDatabaseService.findNode(specificLabel, propertyData.getName(), primaryKeyValue);
-      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, this.mappingInfo);
+      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, ObjectGraphMapper.mappingInfo);
       Object object = node2ObjectMapper.map(this.relationshipTypes);
       
       return entityClass.cast(object);
@@ -55,7 +63,7 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
     
     try {
       tracer.out().printfIndentln("entity = %s", entity);
-      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(entity, this.mappingInfo, this.graphDatabaseService);
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(entity, ObjectGraphMapper.mappingInfo, this.graphDatabaseService);
       
       return object2NodeMapper.map(this.labels, this.relationshipTypes);
     }
