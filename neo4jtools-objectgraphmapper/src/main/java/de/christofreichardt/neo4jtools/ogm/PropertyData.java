@@ -12,17 +12,13 @@ public class PropertyData {
   private final String name;
   private final boolean nullable;
   private final boolean version;
+  private final Class<?> clazz;
 
-  public PropertyData(String name, boolean nullable) {
-    this.name = name;
-    this.nullable = nullable;
-    this.version = false;
-  }
-
-  public PropertyData(String name, boolean nullable, boolean version) {
+  public PropertyData(String name, boolean nullable, boolean version, Class<?> clazz) {
     this.name = name;
     this.nullable = nullable;
     this.version = version;
+    this.clazz = clazz;
   }
 
   public String getName() {
@@ -31,6 +27,10 @@ public class PropertyData {
 
   public boolean isNullable() {
     return nullable;
+  }
+
+  public Class<?> getClazz() {
+    return clazz;
   }
 
   @Override
