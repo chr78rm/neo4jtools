@@ -18,7 +18,6 @@ import java.time.LocalTime;
 import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import org.junit.Assert;
@@ -37,9 +36,9 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
   }
   
   @Test
-  public void roundTrip() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+  public void roundTrip_1() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
-    tracer.entry("void", this, "roundTrip()");
+    tracer.entry("void", this, "roundTrip_1()");
     
     try {
       try {
@@ -62,17 +61,20 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
           document.setCreationDate(formattedTime);
           account.getDocuments().add(document);
         }
+        final Long KEYRING_ID = 31L;
+        account.setKeyRing(new KeyRing(KEYRING_ID));
+        account.getKeyRing().setPath("dummy");
+        account.getKeyRing().setAccount(account);
         
-        Object2NodeMapper object2NodeMapper = new Object2NodeMapper(account, ObjectGraphMapperUnit.graphDatabaseService);
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+            new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
-          object2NodeMapper.map(RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+          objectGraphMapper.save(account);
           transaction.success();
         }
         traceAllNodes();
         
         final Long DOCUMENT_ID = 3L;
-        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
-            ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
           Document document;
           document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
@@ -93,6 +95,82 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
           Assert.assertNotNull("Expected an account node", accountNode);
           Assert.assertTrue("Expected " + TEST_DOCUMENTS + " outgoing relationships to documents.", 
               accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS);
+          Assert.assertTrue("Expected an outgoing relationship to a keyring.", 
+              accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1);
+          
+          transaction.success();
+        }
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  @Test
+  public void roundTrip_2() throws InterruptedException, MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "roundTrip_2()");
+    
+    try {
+      try {
+        IdGeneratorService.getInstance().init(ObjectGraphMapperUnit.graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().start();
+        
+        Account account = new Account("Tester");
+        account.setCountryCode("DE");
+        account.setLocalityName("Rodgau");
+        account.setStateName("Hessen");
+        LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+        String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        final int TEST_DOCUMENTS = 5;
+        account.setDocuments(new ArrayList<>());
+        for (int i = 0; i < TEST_DOCUMENTS; i++) {
+          Document document = new Document();
+          document.setAccount(account);
+          document.setTitle("Testdocument-" + i);
+          document.setType("pdf");
+          document.setCreationDate(formattedTime);
+          account.getDocuments().add(document);
+        }
+        final Long KEYRING_ID = 31L;
+        account.setKeyRing(new KeyRing(KEYRING_ID));
+        account.getKeyRing().setPath("dummy");
+        account.getKeyRing().setAccount(account);
+        
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+            new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          objectGraphMapper.save(account);
+          transaction.success();
+        }
+        traceAllNodes();
+        
+        try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          KeyRing keyRing = objectGraphMapper.load(KeyRing.class, KEYRING_ID);
+
+          tracer.out().printfIndentln("keyRing = %s", keyRing);
+          Assert.assertTrue("Wrong Document.", Objects.equals(KEYRING_ID, keyRing.getId()));
+          tracer.out().printfIndentln("keyRing.getAccount() = %s", keyRing.getAccount());
+          
+          objectGraphMapper.save(keyRing.getAccount());
+          
+          transaction.success();
+        }
+        traceAllNodes();
+        
+        try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+
+          Assert.assertNotNull("Expected an account node", accountNode);
+          Assert.assertTrue("Expected " + TEST_DOCUMENTS + " outgoing relationships to documents.", 
+              accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS);
+          Assert.assertTrue("Expected an outgoing relationship to a keyring.", 
+              accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1);
+          
+          transaction.success();
         }
       }
       finally {
@@ -132,8 +210,8 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         }
         
         Node node;
-        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = new ObjectGraphMapper<>(new MappingInfo(), 
-            ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+            new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
           node = objectGraphMapper.save(account);
           transaction.success();
