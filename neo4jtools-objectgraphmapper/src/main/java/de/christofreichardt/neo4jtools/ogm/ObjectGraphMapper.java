@@ -35,7 +35,7 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
     this.relationshipTypes = relationshipTypes;
   }
 
-  public <U> U load(Class<U> entityClass, Object primaryKeyValue) throws Node2ObjectMapper.Exception{
+  public <U> U load(Class<U> entityClass, Object primaryKeyValue) throws Node2ObjectMapper.Exception {
     AbstractTracer tracer = getCurrentTracer();
     tracer.entry("Object", this, "load(Class<U> entityClass, Object primaryKeyValue)");
     
@@ -44,10 +44,14 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
       tracer.out().printfIndentln("key = %s", primaryKeyValue);
       
       PrimaryKeyData primaryKeyData = ObjectGraphMapper.mappingInfo.getPrimaryKeyMapping(entityClass);
-      S specificLabel = ObjectGraphMapper.mappingInfo.getSpecificLabel(entityClass, this.labels);
       PropertyData propertyData = ObjectGraphMapper.mappingInfo.getPropertyMappingForField(primaryKeyData.getFieldName(), entityClass);
+      if (!propertyData.getClazz().isAssignableFrom(primaryKeyValue.getClass()))
+        throw new IllegalArgumentException("Invalid type for the primary key. Need a '" + propertyData.getClazz().getName() + "' instance.");
+      S specificLabel = ObjectGraphMapper.mappingInfo.getSpecificLabel(entityClass, this.labels);
       Node entityNode = this.graphDatabaseService.findNode(specificLabel, propertyData.getName(), primaryKeyValue);
       Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, ObjectGraphMapper.mappingInfo);
+      if (!entityClass.isAssignableFrom(node2ObjectMapper.getMostSpecificClass()))
+        throw new IllegalArgumentException("Inappropriate specified class '" + entityClass.getName() + "'.");
       Object object = node2ObjectMapper.map(this.relationshipTypes);
       
       return entityClass.cast(object);
