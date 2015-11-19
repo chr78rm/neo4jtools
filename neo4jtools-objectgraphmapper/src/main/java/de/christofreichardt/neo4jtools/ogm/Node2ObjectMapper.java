@@ -42,9 +42,16 @@ public class Node2ObjectMapper implements Traceable {
   }
 
   public Node2ObjectMapper(Node node, MappingInfo mappingInfo) throws Node2ObjectMapper.Exception {
+    if (node == null)
+      throw new NullPointerException("Need a Node.");
+    
     this.node = new RichNode(node);
     this.mappingInfo = mappingInfo;
     this.mostSpecificClass = detectMostSpecificClass();
+  }
+
+  public Class<?> getMostSpecificClass() {
+    return this.mostSpecificClass;
   }
   
   public <S extends Enum<S> & Label, T extends Enum<T> & RelationshipType> Object map(Class<T> relationshipTypes) throws Node2ObjectMapper.Exception {
