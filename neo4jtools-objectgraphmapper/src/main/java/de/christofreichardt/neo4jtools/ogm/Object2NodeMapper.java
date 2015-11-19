@@ -391,8 +391,29 @@ public class Object2NodeMapper implements Traceable {
     }
   }
       
-  private boolean followSingleLink(Field singleLinkField, SingleLinkData singleLinkData) {
-    return singleLinkData.getDirection() == Direction.OUTGOING;
+  private boolean followSingleLink(Field singleLinkField, SingleLinkData singleLinkData) throws IllegalAccessException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("boolean", this, "followLinks(Field linkField, LinkData linkData)");
+    
+    try {
+      boolean flag;
+      if (singleLinkData.getDirection() == Direction.OUTGOING) {
+        Cell<?> cell = (Cell<?>) singleLinkField.get(this.entity);
+        if (cell == null) {
+          flag = true;
+        }
+        else {
+          flag = cell.isLoaded();
+        }
+      }
+      else
+        flag = false;
+      
+      return flag;
+   }
+    finally {
+      tracer.wayout();
+    }
   }
   
   private Object handleIdField(Class<?> entityClass, Object entity, Field idField) throws Object2NodeMapper.Exception {
