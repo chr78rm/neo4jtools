@@ -14,7 +14,8 @@ import org.junit.runners.Suite;
   MappingInfoUnit.class,
   Object2NodeMapperUnit.class,
   Node2ObjectMapperUnit.class,
-  ObjectGraphMapperUnit.class
+  ObjectGraphMapperUnit.class,
+  ExamplesUnit.class
 })
 public class ObjectGraphMapperSuite {
 
