@@ -38,4 +38,9 @@ public class Account2 extends Account {
     this.lastName = lastName;
   }
 
+  @Override
+  public String toString() {
+    return "Account2[userId=" + this.userId + ", lastName=" + this.lastName + "]";
+  }
+
 }

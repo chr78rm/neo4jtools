@@ -24,25 +24,25 @@ import org.neo4j.graphdb.Direction;
 public class Account {
   @Id
   @Property(name = "commonName")
-  private String userId;
+  String userId;
 
   @Property
-  private String localityName;
+  String localityName;
 
   @Property
-  private String stateName;
+  String stateName;
 
   @Property
-  private String countryCode;
+  String countryCode;
   
   @SingleLink(direction = Direction.OUTGOING, type = "OWNS", nullable = true)
-  private Cell<KeyRing> keyRing;
+  Cell<KeyRing> keyRing;
   
   @Links(direction = Direction.OUTGOING, type = "FULFILLS")
-  private Collection<Role> roles;
+  Collection<Role> roles;
   
   @Links(direction = Direction.OUTGOING, type = "HAS")
-  private Collection<Document> documents;
+  Collection<Document> documents;
 
   public Account() {
   }

@@ -235,6 +235,7 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
 
           tracer.out().printfIndentln("account = %s", account);
           Assert.assertTrue("Wrong Account.", Objects.equals("Tester", account.getUserId()));
+          Assert.assertTrue("Wrong type.", account instanceof Account2);
           
           transaction.success();
         }
