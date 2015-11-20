@@ -70,6 +70,35 @@ public class Document {
 }
 ```
 
+## Mapping properties
+
+Fields annotated with `Property` are mapped on corresponding node properties. Since Neo4j supports only primitives like `int`, `long` together
+with `java.lang.String` as value types, it is an error to place a `Property` annotation onto a complex type (like e.g. `java.math.BigInteger`).
+By default a field annotated with `Property` is considered as non-nullable. An example for a nullable field is shown below:
+
+```java
+@NodeEntity(label = "KEY_RINGS")
+public class KeyRing {
+...
+  @Property(nullable = true)
+  private String password;
+...
+}
+```
+
+Properties are key-value pairs. By default a field will be mapped on the property given by taking the field name as key. If this is
+inappropriate, the desired key must be explicitly provided, see the example below:
+
+```java
+@NodeEntity(label = "ACCOUNTS")
+public class Account {
+  @Id
+  @Property(name = "commonName")
+  private String userId;
+...
+}
+```
+
 ## Mapping relationships
 
 Neo4jtools provides two different annotations to model relationships: `Links` and `SingleLink`. With combinations of these annotations someone
@@ -163,5 +192,49 @@ public class KeyRing {
 }
 ```
 
+# The ObjectGraphMapper
 
+The `ObjectGraphMapper` API is the main entry point for managing entity instances, such as loading an entity (graph) from the
+database or saving it. You need to provide a [GraphDatabaseService](http://neo4j.com/docs/2.3.1/javadocs/org/neo4j/graphdb/GraphDatabaseService.html)
+instance and [Enum](http://docs.oracle.com/javase/8/docs/api/java/lang/Enum.html) implementation types of
+[Label](http://neo4j.com/docs/2.3.1/javadocs/org/neo4j/graphdb/Label.html)s and 
+[RelationshipType](http://neo4j.com/docs/2.3.1/javadocs/org/neo4j/graphdb/RelationshipType.html)s to create an `ObjectGraphMapper`
+instance. The `Label`s and `RelationshipType`s are part of your (graph) database schema whereas the `GraphDatabaseService` 
+constitutes your database instance. The complete generic type definition of the `ObjectGraphMapper` is
 
+<p align="center">ObjectGraphMapper&lt;S extends Enum&lt;S&gt; & Label, T extends Enum&lt;T&gt; & RelationshipType&gt;</p>
+
+The string representations of your enumerations must match the string literals used within your mapping definitions.
+
+## Saving an entity (graph)
+
+In principle, every mapped entity may serve as starting point for persisting an entity (graph) to the database. Initally, the `ObjectGraphMapper`
+will inspect the annotated id field to decide if there is a matching node within the database. If so, the matching node will be
+fetched for a merging operation or otherwise a new node will be created. In the latter case the required labels will be added to the just created node.
+In the event of a merging operation and if the entity has an annotated version field the `ObjectGraphMapper` will check the entity for staleness and 
+will cancel the operation if necessary. Next, the mapped properties will be processed. Missing non-nullable properties will cause a failure. Subsequently, 
+all outgoing links (`SingleLink` and `Links`) will be inspected. There are two possibilities: Either the corresponding fields are occupied by
+proxies or not. In the former case the given entity has been previously loaded from the database and its links has been preset with
+proxies. Again there are two possibilities. The load of the referenced entities has been triggered or not. In the former case
+every loaded entity must be recursively processed by the `ObjectGraphMapper` as it is the case if we have accessed the 'real'
+entities, e.g. an `ArrayList`  of entities. A link preset with an unloaded proxy will be ignored. If a link must be processed and in the event of a 
+merging operation all the corresponding relationships of the given node consistent with the link definition will be deleted at first, since we are 
+assuming that those relationships will be refreshed by the given entity.
+
+Simply call `Node save(Object entity)` on an `ObjectGraphMapper` instance to persist an entity (graph). Below are given some examples.
+
+### Saving a single entity
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+Account account = new Account("Tester");
+account.setCountryCode("DE");
+account.setLocalityName("Rodgau");
+account.setStateName("Hessen");
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  objectGraphMapper.save(account);
+  transaction.success();
+}
+```
