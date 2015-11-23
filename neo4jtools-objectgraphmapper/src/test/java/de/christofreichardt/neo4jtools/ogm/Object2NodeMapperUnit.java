@@ -76,7 +76,6 @@ public class Object2NodeMapperUnit extends BasicMapperUnit {
       Account account = new Account("Tester");
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
-      account.setStateName(null);
       
       thrown.expect(Object2NodeMapper.Exception.class);
       thrown.expectMessage("Value required for property");
