@@ -234,7 +234,51 @@ account.setStateName("Hessen");
 ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
     new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
 try (Transaction transaction = graphDatabaseService.beginTx()) {
-  objectGraphMapper.save(account);
+  Node node = objectGraphMapper.save(account);
   transaction.success();
 }
 ```
+
+### Saving an entity graph
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+Account account = new Account("Tester");
+account.setCountryCode("DE");
+account.setLocalityName("Rodgau");
+account.setStateName("Hessen");
+KeyRing keyRing = new KeyRing(0L);
+keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+List<KeyItem> keyItems = new ArrayList<>();
+KeyItem keyItem = new KeyItem(0L);
+keyItem.setKeyRing(keyRing);
+keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+keyItem.setCreationDate(formattedTime);
+keyItems.add(keyItem);
+keyRing.setKeyItems(keyItems);
+account.setKeyRing(keyRing);
+account.setDocuments(new ArrayList<>());
+Document document = new Document(0L);
+document.setAccount(account);
+document.setTitle("Testdocument-1");
+document.setType("pdf");
+document.setCreationDate(formattedTime);
+account.getDocuments().add(document);
+document = new Document(1L);
+document.setAccount(account);
+document.setTitle("Testdocument-2");
+document.setType("pdf");
+document.setCreationDate(formattedTime);
+account.getDocuments().add(document);
+ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+Node node;
+try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+  node = objectGraphMapper.save(account);
+  transaction.success();
+}
+ ```
+
+Note that only outgoing links will be processed.
