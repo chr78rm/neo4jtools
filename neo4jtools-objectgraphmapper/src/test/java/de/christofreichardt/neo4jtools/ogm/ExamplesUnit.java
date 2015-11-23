@@ -8,11 +8,28 @@ package de.christofreichardt.neo4jtools.ogm;
 
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
+import de.christofreichardt.neo4jtools.ogm.model.Document;
+import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
+import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
+import java.io.File;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.chrono.IsoChronology;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+import org.junit.Assert;
 import org.junit.Test;
+import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Path;
+import org.neo4j.graphdb.ResourceIterator;
 import org.neo4j.graphdb.Transaction;
+import org.neo4j.graphdb.traversal.Evaluation;
+import org.neo4j.graphdb.traversal.Traverser;
+import org.neo4j.graphdb.traversal.Uniqueness;
 
 /**
  *
@@ -37,7 +54,72 @@ public class ExamplesUnit extends BasicMapperUnit {
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
           new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
       try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
-        objectGraphMapper.save(account);
+        Node node = objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_2() throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_2()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      KeyRing keyRing = new KeyRing(0L);
+      keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+      List<KeyItem> keyItems = new ArrayList<>();
+      KeyItem keyItem = new KeyItem(0L);
+      keyItem.setKeyRing(keyRing);
+      keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem.setCreationDate(formattedTime);
+      keyItems.add(keyItem);
+      keyRing.setKeyItems(keyItems);
+      account.setKeyRing(keyRing);
+      account.setDocuments(new ArrayList<>());
+      Document document = new Document(0L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-1");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      account.getDocuments().add(document);
+      document = new Document(1L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-2");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      account.getDocuments().add(document);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      Node node;
+      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+        node = objectGraphMapper.save(account);
+        transaction.success();
+      }
+      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
+        Traverser traverser = Node2ObjectMapperUnit.graphDatabaseService
+            .traversalDescription()
+            .depthFirst()
+            .evaluator((Path path) -> {
+              tracer.out().printfIndentln("%s", path);
+              return Evaluation.INCLUDE_AND_CONTINUE;
+            })
+            .uniqueness(Uniqueness.NODE_GLOBAL)
+            .traverse(node);
+        ResourceIterator<Node> iter = traverser.nodes().iterator();
+        while (iter.hasNext()) {
+          iter.next();
+        }
         transaction.success();
       }
       traceAllNodes();
