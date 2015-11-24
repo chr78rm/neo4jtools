@@ -166,4 +166,28 @@ public class ExamplesUnit extends BasicMapperUnit {
       tracer.wayout();
     }
   }
+
+  @Test
+  public void example_4() throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_4()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Value required for property");
+      
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
 }
