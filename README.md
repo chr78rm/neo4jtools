@@ -1,10 +1,10 @@
 # neo4jtools (work in progress)
 
-A lightweight framework for working with embedded neo4j graph database instances. The main focus lies on object-graph-mapping
+A lightweight framework for working with embedded [Neo4j](http://neo4j.com/) graph database instances. The main focus lies on object-graph-mapping
 routines. Contrary to [neo4j-ogm](https://github.com/neo4j/neo4j-ogm) neo4jtools doesn't operate "over the wire". It loads and
-saves objects directly from and to [GraphDatabaseService](http://neo4j.com/docs/2.2.6/javadocs/org/neo4j/graphdb/GraphDatabaseService.html)
+saves objects directly from and to [GraphDatabaseService](http://neo4j.com/docs/2.3.1/javadocs/org/neo4j/graphdb/GraphDatabaseService.html)
 instances based upon mapping annotations on entity classes. Whole (uniformly typed) object graphs can be (lazily) retrieved by an
-`Iterable<T>` given by mapping through the results of a [traversal](http://neo4j.com/docs/2.2.6/tutorial-traversal-concepts.html).
+`Iterable<T>` given by mapping through the results of a [traversal](http://neo4j.com/docs/stable/tutorial-traversal.html).
 That is, the Cypher Query Language won't be needed for this.
 
 [Maven](https://maven.apache.org/) is required to compile the library. Use
@@ -144,8 +144,8 @@ public class KeyItem {
 
 ### many-to-many
 
-Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `fulfills`
-edges leading to various Role nodes whereas a certain Role node might has multiple incoming `fulfills` edges from different Account nodes:
+Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `FULFILLS`
+edges leading to various Role nodes whereas a certain Role node might has multiple incoming `FULFILLS` edges from different Account nodes:
 
 ```java
 @NodeEntity(label = "ACCOUNTS")
@@ -241,6 +241,8 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 
 ### Saving an entity graph
 
+Note that only outgoing links will be (recursively) processed.
+
 ```java
 GraphDatabaseService graphDatabaseService = ...
 LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
@@ -281,4 +283,39 @@ try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginT
 }
  ```
 
-Note that only outgoing links will be processed.
+### SingleLink constraint violations
+
+Basically, there are two ways to violate a SingleLink constraint. First, you fail to add a certain single link between two nodes (entities) but that
+link has been marked as non-nullable (which is the default). Or, you might try to add a second relationship (or rather link) between two nodes
+but that relationship type had been mapped as SingleLink. In the latter case, the `ObjectGraphMapper` implements a fail-fast behaviour, that is such
+errors will be detected during a save operation, see the subsequent example:
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+Account superTester = new Account("Supertester");
+superTester.setCountryCode("DE");
+superTester.setLocalityName("Rodgau");
+superTester.setStateName("Hessen");
+KeyRing superTesterKeyRing = new KeyRing(0L);
+superTesterKeyRing.setPath("." + File.separator + "store" + File.separator + "theSuperTesterKeystore.jks");
+superTester.setKeyRing(superTesterKeyRing);
+Account tester = new Account("Tester");
+tester.setCountryCode("DE");
+tester.setLocalityName("Hainhausen");
+tester.setStateName("Hessen");
+tester.setKeyRing(superTesterKeyRing);
+ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+  new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+objectGraphMapper.save(superTester);
+objectGraphMapper.save(tester);
+transaction.success();
+}
+```
+
+In the example above, the same Keyring is added to different Account entities which is easy enough but that would result in two incoming `OWNS` links on the
+KeyRing node and that has been ruled out by the mapping definitions. This will raise an exception and as a consequence the transaction will be rolled back.
+
+On the other hand non-nullable SingleLink violations won't be detected during a save operation at present but will raise an appropriate exception when trying to access
+the entity via the missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
+links might occure deep in the recursion at any time but they might be resolved later on when revisiting nodes that have been saved already. 
