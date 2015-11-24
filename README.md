@@ -49,9 +49,7 @@ the following definition of the Account entity class
 ```java
 @NodeEntity(label = "ACCOUNTS")
 public class Account {
-  @Id
-  @Property(name = "commonName")
-  private String userId;
+  @Id @Property(name = "commonName") private String userId;
 ...
 }
 ```
@@ -62,10 +60,7 @@ be generated automatically by a service:
 ```java
 @NodeEntity(label = "DOCUMENTS")
 public class Document {
-  @Id
-  @Property
-  @GeneratedValue
-  private Long id;
+  @Id @Property @GeneratedValue private Long id;
 ...
 }
 ```
@@ -80,8 +75,7 @@ By default a field annotated with `Property` is considered as non-nullable. An e
 @NodeEntity(label = "KEY_RINGS")
 public class KeyRing {
 ...
-  @Property(nullable = true)
-  private String password;
+  @Property(nullable = true) private String password;
 ...
 }
 ```
@@ -92,9 +86,7 @@ inappropriate, the desired key must be explicitly provided, see the example belo
 ```java
 @NodeEntity(label = "ACCOUNTS")
 public class Account {
-  @Id
-  @Property(name = "commonName")
-  private String userId;
+  @Id @Property(name = "commonName") private String userId;
 ...
 }
 ```
@@ -307,8 +299,8 @@ tester.setKeyRing(superTesterKeyRing);
 ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
   new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
 try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
-objectGraphMapper.save(superTester);
-objectGraphMapper.save(tester);
+  objectGraphMapper.save(superTester);
+  objectGraphMapper.save(tester);
 transaction.success();
 }
 ```
@@ -319,3 +311,34 @@ KeyRing node and that has been ruled out by the mapping definitions. This will r
 On the other hand non-nullable SingleLink violations won't be detected during a save operation at present but will raise an appropriate exception when trying to access
 an entity via a missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
 links might occure deep in the recursion at any time but they might be resolved later on when revisiting nodes that have been saved already. 
+
+### Non-nullable properties
+
+By default mapped properties are non-nullable. The `ObjectGraphMapper` enforces this by a fail-fast behaviour. Given the mapping definitions below
+
+```java
+@NodeEntity(label = "ACCOUNTS")
+public class Account {
+  @Id @Property(name = "commonName") String userId;
+  @Property String localityName;
+  @Property String stateName;
+  @Property String countryCode;
+...
+}
+```
+
+the subsequent example will raise an exception and therefore the transaction will be rolled back:
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+Account account = new Account("Tester");
+account.setCountryCode("DE");
+account.setLocalityName("Rodgau");
+ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+  objectGraphMapper.save(account);
+  transaction.success();
+}
+}
+```
