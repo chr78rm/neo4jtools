@@ -317,5 +317,5 @@ In the example above, the same Keyring is added to different Account entities wh
 KeyRing node and that has been ruled out by the mapping definitions. This will raise an exception and as a consequence the transaction will be rolled back.
 
 On the other hand non-nullable SingleLink violations won't be detected during a save operation at present but will raise an appropriate exception when trying to access
-the entity via the missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
+an entity via a missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
 links might occure deep in the recursion at any time but they might be resolved later on when revisiting nodes that have been saved already. 
