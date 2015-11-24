@@ -21,8 +21,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.ResourceIterator;
@@ -36,6 +37,9 @@ import org.neo4j.graphdb.traversal.Uniqueness;
  * @author Christof Reichardt
  */
 public class ExamplesUnit extends BasicMapperUnit {
+  
+  @Rule
+  public ExpectedException thrown = ExpectedException.none();
 
   public ExamplesUnit(Properties properties) {
     super(properties);
@@ -123,6 +127,40 @@ public class ExamplesUnit extends BasicMapperUnit {
         transaction.success();
       }
       traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_3() throws Object2NodeMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_3()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Constraint violated.");
+      
+      Account superTester = new Account("Supertester");
+      superTester.setCountryCode("DE");
+      superTester.setLocalityName("Rodgau");
+      superTester.setStateName("Hessen");
+      KeyRing superTesterKeyRing = new KeyRing(0L);
+      superTesterKeyRing.setPath("." + File.separator + "store" + File.separator + "theSuperTesterKeystore.jks");
+      superTester.setKeyRing(superTesterKeyRing);
+      Account tester = new Account("Tester");
+      tester.setCountryCode("DE");
+      tester.setLocalityName("Hainhausen");
+      tester.setStateName("Hessen");
+      tester.setKeyRing(superTesterKeyRing);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(superTester);
+        objectGraphMapper.save(tester);
+        transaction.success();
+      }
     }
     finally {
       tracer.wayout();
