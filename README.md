@@ -340,5 +340,4 @@ try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginT
   objectGraphMapper.save(account);
   transaction.success();
 }
-}
 ```
