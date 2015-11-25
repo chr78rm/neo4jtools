@@ -266,10 +266,9 @@ document.setTitle("Testdocument-2");
 document.setType("pdf");
 document.setCreationDate(formattedTime);
 account.getDocuments().add(document);
-ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-    new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-Node node;
-try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
   node = objectGraphMapper.save(account);
   transaction.success();
 }
@@ -296,9 +295,9 @@ tester.setCountryCode("DE");
 tester.setLocalityName("Hainhausen");
 tester.setStateName("Hessen");
 tester.setKeyRing(superTesterKeyRing);
-ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-  new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
   objectGraphMapper.save(superTester);
   objectGraphMapper.save(tester);
 transaction.success();
@@ -334,10 +333,57 @@ GraphDatabaseService graphDatabaseService = ...
 Account account = new Account("Tester");
 account.setCountryCode("DE");
 account.setLocalityName("Rodgau");
-ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-    new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
   objectGraphMapper.save(account);
   transaction.success();
+}
+```
+
+### Automatic IDs
+
+The `ObjectGraphMapper` can provide automatically IDs for the appropriate annotated properties by relying on a background service.
+Obviously, without these service a missing ID would lead to a failure when saving entities. For every entity that participates
+in the service a corresponding database node will be managed. A certain property on this node will serve as high-water mark for IDs. During startup
+of the service the high-water mark on the corresponding nodes will be evaluated and the service will provide a buffer of IDs counting from
+the high-water mark. During shutdown of the service new high-water marks will be written on these nodes. The subsequent example uses this feature for
+Document and KeyRing entities:
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+try {
+  IdGeneratorService.getInstance().init(graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
+  IdGeneratorService.getInstance().start();
+  Account account = new Account("Tester");
+  account.setCountryCode("DE");
+  account.setLocalityName("Rodgau");
+  account.setStateName("Hessen");
+  LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+  String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+  final int TEST_DOCUMENTS = 10;
+  List<Document> documents = new ArrayList<>();
+  for (int i = 0; i < TEST_DOCUMENTS; i++) {
+    Document document = new Document();
+    document.setAccount(account);
+    document.setTitle("Testdocument-" + i);
+    document.setType("pdf");
+    document.setCreationDate(formattedTime);
+    documents.add(document);
+  }
+  account.setDocuments(documents);
+  KeyRing keyRing = new KeyRing();
+  keyRing.setAccount(account);
+  keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+  account.setKeyRing(keyRing);
+  ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+      new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+  try (Transaction transaction = graphDatabaseService.beginTx()) {
+    objectGraphMapper.save(account);
+    transaction.success();
+  }
+}
+finally {
+  IdGeneratorService.getInstance().shutDown();
 }
 ```
