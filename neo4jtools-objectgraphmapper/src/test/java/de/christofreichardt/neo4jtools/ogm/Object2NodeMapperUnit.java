@@ -220,7 +220,7 @@ public class Object2NodeMapperUnit extends BasicMapperUnit {
     
     try {
       try {
-        IdGeneratorService.getInstance().init(Object2NodeMapperUnit.graphDatabaseService, Account.class.getName(), Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().init(Object2NodeMapperUnit.graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
         IdGeneratorService.getInstance().start();
         
         Account account = new Account("Tester");
