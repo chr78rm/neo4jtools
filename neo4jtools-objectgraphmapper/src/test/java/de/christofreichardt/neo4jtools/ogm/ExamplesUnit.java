@@ -7,6 +7,7 @@
 package de.christofreichardt.neo4jtools.ogm;
 
 import de.christofreichardt.diagnosis.AbstractTracer;
+import de.christofreichardt.neo4jtools.idgen.IdGeneratorService;
 import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
@@ -56,8 +57,8 @@ public class ExamplesUnit extends BasicMapperUnit {
       account.setLocalityName("Rodgau");
       account.setStateName("Hessen");
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
         Node node = objectGraphMapper.save(account);
         transaction.success();
       }
@@ -104,14 +105,14 @@ public class ExamplesUnit extends BasicMapperUnit {
       document.setCreationDate(formattedTime);
       account.getDocuments().add(document);
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
       Node node;
-      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
         node = objectGraphMapper.save(account);
         transaction.success();
       }
-      try (Transaction transaction = Node2ObjectMapperUnit.graphDatabaseService.beginTx()) {
-        Traverser traverser = Node2ObjectMapperUnit.graphDatabaseService
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Traverser traverser = graphDatabaseService
             .traversalDescription()
             .depthFirst()
             .evaluator((Path path) -> {
@@ -155,8 +156,8 @@ public class ExamplesUnit extends BasicMapperUnit {
       tester.setStateName("Hessen");
       tester.setKeyRing(superTesterKeyRing);
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
         objectGraphMapper.save(superTester);
         objectGraphMapper.save(tester);
         transaction.success();
@@ -180,11 +181,58 @@ public class ExamplesUnit extends BasicMapperUnit {
       account.setCountryCode("DE");
       account.setLocalityName("Rodgau");
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
-          new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-      try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
         objectGraphMapper.save(account);
         transaction.success();
       }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_5() throws Object2NodeMapper.Exception, InterruptedException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_5()");
+    
+    try {
+      try {
+        IdGeneratorService.getInstance().init(graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().start();
+        Account account = new Account("Tester");
+        account.setCountryCode("DE");
+        account.setLocalityName("Rodgau");
+        account.setStateName("Hessen");
+        LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+        String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        final int TEST_DOCUMENTS = 10;
+        List<Document> documents = new ArrayList<>();
+        for (int i = 0; i < TEST_DOCUMENTS; i++) {
+          Document document = new Document();
+          document.setAccount(account);
+          document.setTitle("Testdocument-" + i);
+          document.setType("pdf");
+          document.setCreationDate(formattedTime);
+          documents.add(document);
+        }
+        account.setDocuments(documents);
+        KeyRing keyRing = new KeyRing();
+        keyRing.setAccount(account);
+        keyRing.setPath("." + File.separator + "store" + File.separator + "theKeystore.jks");
+        account.setKeyRing(keyRing);
+        ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+            new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+        try (Transaction transaction = graphDatabaseService.beginTx()) {
+          objectGraphMapper.save(account);
+          transaction.success();
+        }
+      }
+      finally {
+        IdGeneratorService.getInstance().shutDown();
+      }
+      traceAllNodes();
     }
     finally {
       tracer.wayout();
