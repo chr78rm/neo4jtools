@@ -52,7 +52,7 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
     
     try {
       try {
-        IdGeneratorService.getInstance().init(ObjectGraphMapperUnit.graphDatabaseService, Document.class.getName(), KeyRing.class.getName());
+        IdGeneratorService.getInstance().init(ObjectGraphMapperUnit.graphDatabaseService, Document.class.getName());
         IdGeneratorService.getInstance().start();
         
         Account account = new Account("Tester");
