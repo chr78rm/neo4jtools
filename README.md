@@ -387,3 +387,58 @@ finally {
   IdGeneratorService.getInstance().shutDown();
 }
 ```
+
+### Optimistic locking
+
+Suppose that a certain entity will be loaded twice by different users at the same time. Now, the first user updates the entity and saves it back to the database. After the
+transaction completes the second user is left with an outdated entity object. If he decides to save back his old copy of the entity he may overwrite the changes done by
+the first user. If the application logic allows such concurrent accesses some locking on the affected objects must be applied. Optimistic locking is favourable in
+scenarios with low data contention. Read access is generally granted but the saving of an outdated object will raise a failure. Use the `Version` annotation on
+an Integer field to enable optimistic locking on an entity object, see the mapping definition below:
+
+```java
+@NodeEntity(label = "ENCRYPTED_DOCUMENTS")
+public class EncryptedDocument extends Document {
+  @Property @Version private Integer counter = 0;
+  public EncryptedDocument(Long id) {
+    super(id);
+  }
+}
+```
+
+Now the subsequently shown code will raise an exception and the second transaction will fail, since the entity graph references an outdated object now:
+
+```java
+GraphDatabaseService graphDatabaseService = ...
+LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+Account account = new Account("Supertester");
+account.setCountryCode("DE");
+account.setLocalityName("Rodgau");
+account.setStateName("Hessen");
+account.setDocuments(new ArrayList<>());
+PlaintextDocument document = new PlaintextDocument(0L);
+document.setAccount(account);
+document.setTitle("Testdocument-1");
+document.setType("pdf");
+document.setCreationDate(formattedTime);
+account.getDocuments().add(document);
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  objectGraphMapper.save(account);
+  transaction.success();
+}
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  objectGraphMapper.save(account);
+  transaction.success();
+}
+```
+
+## Loading an entity (graph)
+
+You need to provide the class and the ID of the desired entity to load the corresponding object. All fields which represent links (`SingleLink` and `Links`, 
+outgoing as well as incoming) will be preset with proxies. As soon as you traverse these proxies, e.g. by invoking Collection.size(), the load of the corresponding objects 
+will be triggered. 
+
+(To be continued.)
