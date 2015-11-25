@@ -344,7 +344,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 ### Automatic IDs
 
 The `ObjectGraphMapper` can provide automatically IDs for the appropriate annotated properties by relying on a background service.
-Obviously, without these service a missing ID would lead to a failure when saving entities. For every entity that participates
+Obviously, without this service a missing ID would lead to a failure when saving entities. For every entity that participates
 in the service a corresponding database node will be managed. A certain property on this node will serve as high-water mark for IDs. During startup
 of the service the high-water mark on the corresponding nodes will be evaluated and the service will provide a buffer of IDs counting from
 the high-water mark. During shutdown of the service new high-water marks will be written on these nodes. The subsequent example uses this feature for
