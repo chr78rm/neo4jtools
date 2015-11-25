@@ -12,6 +12,7 @@ import de.christofreichardt.neo4jtools.ogm.model.Account;
 import de.christofreichardt.neo4jtools.ogm.model.Document;
 import de.christofreichardt.neo4jtools.ogm.model.KeyItem;
 import de.christofreichardt.neo4jtools.ogm.model.KeyRing;
+import de.christofreichardt.neo4jtools.ogm.model.PlaintextDocument;
 import de.christofreichardt.neo4jtools.ogm.model.RESTFulCryptoRelationships;
 import de.christofreichardt.neo4jtools.ogm.model.RESTfulCryptoLabels;
 import java.io.File;
@@ -233,6 +234,45 @@ public class ExamplesUnit extends BasicMapperUnit {
         IdGeneratorService.getInstance().shutDown();
       }
       traceAllNodes();
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_6() throws Object2NodeMapper.Exception, InterruptedException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_6()");
+    
+    try {
+      this.thrown.expect(Object2NodeMapper.Exception.class);
+      this.thrown.expectMessage("Stale data.");
+      
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      Account account = new Account("Supertester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      account.setDocuments(new ArrayList<>());
+      PlaintextDocument document = new PlaintextDocument(0L);
+      document.setAccount(account);
+      document.setTitle("Testdocument-1");
+      document.setType("pdf");
+      document.setCreationDate(formattedTime);
+      account.getDocuments().add(document);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
     }
     finally {
       tracer.wayout();
