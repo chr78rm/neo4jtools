@@ -91,22 +91,31 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
 
           tracer.out().printfIndentln("document = %s", document);
           Assert.assertTrue("Wrong Document.", Objects.equals(DOCUMENT_ID, document.getId()));
+          Assert.assertTrue("Wrong Document.", Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID));
           tracer.out().printfIndentln("document.getAccount() = %s", document.getAccount());
           
-          objectGraphMapper.save(document.getAccount());
+          document.setTitle("Changed title.");
+          objectGraphMapper.save(document);
           
           transaction.success();
         }
         traceAllNodes();
         
         try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
-          Node accountNode = Object2NodeMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+          Node accountNode = ObjectGraphMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
 
           Assert.assertNotNull("Expected an account node", accountNode);
           Assert.assertTrue("Expected " + TEST_DOCUMENTS + " outgoing relationships to documents.", 
               accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS);
           Assert.assertTrue("Expected an outgoing relationship to a keyring.", 
               accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1);
+          
+          Node documentNode = ObjectGraphMapperUnit.graphDatabaseService.findNode(RESTfulCryptoLabels.DOCUMENTS, "id", DOCUMENT_ID);
+          
+          Assert.assertNotNull("Expected an document node", documentNode);
+          Assert.assertTrue("Wrong title.", Objects.equals(documentNode.getProperty("title"), "Changed title."));
+          Assert.assertTrue("Expected a single incoming relationship to an account.", 
+              documentNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.INCOMING) == 1);
           
           transaction.success();
         }
