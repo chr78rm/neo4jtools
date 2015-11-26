@@ -435,10 +435,72 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-## Loading an entity (graph)
+## Loading (and saving) an entity (graph)
 
 You need to provide the class and the ID of the desired entity to load the corresponding object. All fields which represent links (`SingleLink` and `Links`, 
 outgoing as well as incoming) will be preset with proxies. As soon as you traverse these proxies, e.g. by invoking Collection.size(), the load of the corresponding objects 
-will be triggered. 
+will be triggered. Call `<U> U load(Class<U> entityClass, Object primaryKeyValue)` on an `ObjectGraphMapper` instance to load a certain entity of type U, see the subsequent 
+code excerpts. First, we will save an entity graph into the database:
 
+```java
+GraphDatabaseService graphDatabaseService = ...
+Account account = new Account("Tester");
+account.setCountryCode("DE");
+account.setLocalityName("Rodgau");
+account.setStateName("Hessen");
+LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+final int TEST_DOCUMENTS = 5;
+account.setDocuments(new ArrayList<>());
+for (long i = 0; i < TEST_DOCUMENTS; i++) {
+  Document document = new Document(i);
+  document.setAccount(account);
+  document.setTitle("Testdocument-" + i);
+  document.setType("pdf");
+  document.setCreationDate(formattedTime);
+  account.getDocuments().add(document);
+}
+final Long KEYRING_ID = 31L;
+account.setKeyRing(new KeyRing(KEYRING_ID));
+account.getKeyRing().setPath("dummy");
+account.getKeyRing().setAccount(account);
+ObjectGraphMapper<MyLabels, MyRelationships> objectGraphMapper = 
+    new ObjectGraphMapper<>(graphDatabaseService, MyLabels.class, MyRelationships.class);
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  objectGraphMapper.save(account);
+  transaction.success();
+}
+```
+
+Next, we will load the Document(id=3) entity, change its title and save it back again, everything in one transaction:
+
+```java
+final Long DOCUMENT_ID = 3L;
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  Document document;
+  document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+  assert Objects.equals(DOCUMENT_ID, document.getId());
+  assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+  assert Objects.equals(document.getAccount().getUserId(), "Tester");
+  document.setTitle("Changed title.");
+  objectGraphMapper.save(document);
+  transaction.success();
+}
+```
+
+Finally, we will verify, that the state is persistent within the database:
+
+```java
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  Node accountNode = graphDatabaseService.findNode(MyLabels.ACCOUNTS, "commonName", "Tester");
+  assert accountNode != null;
+  assert accountNode.getDegree(MyRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS;
+  assert accountNode.getDegree(MyRelationships.OWNS, Direction.OUTGOING) == 1;
+  Node documentNode = graphDatabaseService.findNode(MyLabels.DOCUMENTS, "id", DOCUMENT_ID);
+  assert documentNode != null;
+  assert Objects.equals(documentNode.getProperty("title"), "Changed title.");
+  assert documentNode.getDegree(MyRelationships.HAS, Direction.INCOMING) == 1;
+  transaction.success();
+}
+```
 (To be continued.)
