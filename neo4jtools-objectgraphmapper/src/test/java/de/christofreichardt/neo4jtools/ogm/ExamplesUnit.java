@@ -22,10 +22,13 @@ import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Node;
 import org.neo4j.graphdb.Path;
 import org.neo4j.graphdb.ResourceIterator;
@@ -271,6 +274,68 @@ public class ExamplesUnit extends BasicMapperUnit {
       traceAllNodes();
       try (Transaction transaction = graphDatabaseService.beginTx()) {
         objectGraphMapper.save(account);
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_7() throws Object2NodeMapper.Exception, InterruptedException, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_7()");
+    
+    try {
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      final int TEST_DOCUMENTS = 5;
+      account.setDocuments(new ArrayList<>());
+      for (long i = 0; i < TEST_DOCUMENTS; i++) {
+        Document document = new Document(i);
+        document.setAccount(account);
+        document.setTitle("Testdocument-" + i);
+        document.setType("pdf");
+        document.setCreationDate(formattedTime);
+        account.getDocuments().add(document);
+      }
+      final Long KEYRING_ID = 31L;
+      account.setKeyRing(new KeyRing(KEYRING_ID));
+      account.getKeyRing().setPath("dummy");
+      account.getKeyRing().setAccount(account);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      final Long DOCUMENT_ID = 3L;
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Document document;
+        document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+        assert Objects.equals(DOCUMENT_ID, document.getId());
+        assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+        assert Objects.equals(document.getAccount().getUserId(), "Tester");
+        document.setTitle("Changed title.");
+        objectGraphMapper.save(document);
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Node accountNode = graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+        assert accountNode != null;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1;
+        Node documentNode = graphDatabaseService.findNode(RESTfulCryptoLabels.DOCUMENTS, "id", DOCUMENT_ID);
+        assert documentNode != null;
+        assert Objects.equals(documentNode.getProperty("title"), "Changed title.");
+        assert documentNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.INCOMING) == 1;
         transaction.success();
       }
     }
