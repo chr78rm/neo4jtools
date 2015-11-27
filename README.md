@@ -560,7 +560,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
   assert Objects.equals(document.getAccount().getUserId(), "Tester");
   document.setTitle("Changed title."); // doesn't work
   document.getAccount().setCountryCode("EN");
-  objectGraphMapper.save(document);
+  objectGraphMapper.save(document.getAccount());
   transaction.success();
 }
 ```
