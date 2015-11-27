@@ -14,9 +14,19 @@ That is, the Cypher Query Language won't be needed for this.
   1. [Mapping the identity](#MappingId)
   2. [Mapping properties](#MappingProperties)
   3. [Mapping relationships](#MappingRelationships)
+    1. [one-to-many](#one-to-many)
+    2. [many-to-many](#many-to-many)
+    3. [one-to-one](#one-to-one)
 3. [The ObjectGraphMapper](#ObjectGraphMapper)
   1. [Saving an entity (graph)](#Saving)
+    1. [Saving a single entity](#SingleEntity)
+    2. [Saving an entity graph](#SingleGraph)
+    3. [SingleLink constraint violations](#SingleLinkViolations)
+    4. [Non-nullable properties](#NonNullableProperties)
+    5. [Automatic IDs](#AutomaticIDs)
+    6. [Optimistic locking](#Optimistic)
   1. [Database roundtrips (loading and saving)](#Roundtrips)
+    1. [Some limitations and pitfalls](#Limitations)
 
 ## <a name="Build"></a>1. Build
 
@@ -109,7 +119,7 @@ public class Account {
 Neo4jtools provides two different annotations to model relationships: `Links` and `SingleLink`. With combinations of these annotations someone
 is able to map one-to-many, many-to-many and one-to-one relationships.
 
-#### one-to-many
+#### <a name="one-to-many"></a>2.iii.a one-to-many
 
 An example for a one-to-many relationship is the relationship between a Keyring and its Keyitems. From a perspective of a graph database, 
 a Keyring node might have zero, one or multiple (directed) `contains` edges leading to Keyitem nodes. On the other hand every Keyitem
@@ -170,7 +180,7 @@ public class Document {
 ```
 
 
-#### many-to-many
+#### <a name="many-to-many"></a>2.iii.b many-to-many
 
 Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `FULFILLS`
 edges leading to various Role nodes whereas a certain Role node might has multiple incoming `FULFILLS` edges from different Account nodes:
@@ -194,7 +204,7 @@ public class Role {
 }
 ```
 
-#### one-to-one
+#### <a name="one-to-one"></a>2.iii.c one-to-one
 
 As one might expect, one-to-one relationships are modelled with `SingleLink`s on both sides. An example for a one-to-one 
 relationship is the association between an Account and its Keyring. Whereas an Account didn't need necessarily a Keyring,
@@ -251,7 +261,7 @@ assuming that those relationships will be refreshed by the given entity.
 
 Simply call `Node save(Object entity)` on an `ObjectGraphMapper` instance to persist an entity (graph). Below are given some examples.
 
-#### Saving a single entity
+#### <a name="SingleEntity"></a>3.i.a Saving a single entity
 
 ```java
 GraphDatabaseService graphDatabaseService = ...
@@ -267,7 +277,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-#### Saving an entity graph
+#### <a name="SingleGraph"></a>3.i.b Saving an entity graph
 
 Note that only outgoing links will be (recursively) processed.
 
@@ -310,7 +320,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
  ```
 
-#### SingleLink constraint violations
+#### <a name="SingleLinkViolations"></a>3.i.c SingleLink constraint violations
 
 Basically, there are two ways to violate a SingleLink constraint. First, you fail to add a certain single link between two nodes (entities) but that
 link has been marked as non-nullable (which is the default). Or, you might try to add a second relationship (or rather link) between two nodes
@@ -347,7 +357,7 @@ On the other hand non-nullable SingleLink violations won't be detected during a 
 an entity via a missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
 links might occure deep in the recursion at any time but they might be resolved later on when revisiting nodes that have been saved already. 
 
-#### Non-nullable properties
+#### <a name="NonNullableProperties"></a>3.i.d Non-nullable properties
 
 By default mapped properties are non-nullable. The `ObjectGraphMapper` enforces this by a fail-fast behaviour. Given the mapping definitions below
 
@@ -377,7 +387,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-#### Automatic IDs
+#### <a name="AutomaticIDs"></a>3.i.e Automatic IDs
 
 The `ObjectGraphMapper` can provide automatically IDs for the appropriate annotated properties by relying on a background service.
 Obviously, without this service a missing ID would lead to a failure when saving entities. For every entity that participates
@@ -424,7 +434,7 @@ finally {
 }
 ```
 
-#### Optimistic locking
+#### <a name="Optimistic"></a>3.i.f Optimistic locking
 
 Suppose that a certain entity will be loaded twice by different users at the same time. Now, the first user updates the entity and saves it back to the database. After the
 transaction completes the second user is left with an outdated entity object. If he decides to save back his old copy of the entity he may overwrite the changes done by
@@ -540,7 +550,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-#### Some limitations and pitfalls
+#### <a name="Limitations"></a>3.ii.a Some limitations and pitfalls
 
 As the code excerpts above demonstrate, it is possible to load a certain Document and access its parent Account by traversing the incoming `SingleLink`. But doing so
 is a bad idea if you want to modify both the Account and one of its Documents. First, you can't use the Document entity as starting point for a save operation since
