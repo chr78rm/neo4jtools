@@ -343,4 +343,193 @@ public class ExamplesUnit extends BasicMapperUnit {
       tracer.wayout();
     }
   }
+
+  @Test
+  public void example_8() throws Object2NodeMapper.Exception, InterruptedException, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_8()");
+    
+    try {
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      final int TEST_DOCUMENTS = 5;
+      account.setDocuments(new ArrayList<>());
+      for (long i = 0; i < TEST_DOCUMENTS; i++) {
+        Document document = new Document(i);
+        document.setAccount(account);
+        document.setTitle("Testdocument-" + i);
+        document.setType("pdf");
+        document.setCreationDate(formattedTime);
+        account.getDocuments().add(document);
+      }
+      final Long KEYRING_ID = 31L;
+      account.setKeyRing(new KeyRing(KEYRING_ID));
+      account.getKeyRing().setPath("dummy");
+      account.getKeyRing().setAccount(account);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      final Long DOCUMENT_ID = 3L;
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Document document;
+        document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+        assert Objects.equals(DOCUMENT_ID, document.getId());
+        assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+        assert Objects.equals(document.getAccount().getUserId(), "Tester");
+        document.setTitle("Changed title.");
+        document.getAccount().setCountryCode("EN"); // doesn't work
+        objectGraphMapper.save(document);
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Node accountNode = graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+        assert accountNode != null;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1;
+        assert Objects.equals(accountNode.getProperty("countryCode"), "DE");
+        Node documentNode = graphDatabaseService.findNode(RESTfulCryptoLabels.DOCUMENTS, "id", DOCUMENT_ID);
+        assert documentNode != null;
+        assert Objects.equals(documentNode.getProperty("title"), "Changed title.");
+        assert documentNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.INCOMING) == 1;
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_9() throws Object2NodeMapper.Exception, InterruptedException, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_9()");
+    
+    try {
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      final int TEST_DOCUMENTS = 5;
+      account.setDocuments(new ArrayList<>());
+      for (long i = 0; i < TEST_DOCUMENTS; i++) {
+        Document document = new Document(i);
+        document.setAccount(account);
+        document.setTitle("Testdocument-" + i);
+        document.setType("pdf");
+        document.setCreationDate(formattedTime);
+        account.getDocuments().add(document);
+      }
+      final Long KEYRING_ID = 31L;
+      account.setKeyRing(new KeyRing(KEYRING_ID));
+      account.getKeyRing().setPath("dummy");
+      account.getKeyRing().setAccount(account);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      final Long DOCUMENT_ID = 3L;
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Document document;
+        document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+        assert Objects.equals(DOCUMENT_ID, document.getId());
+        assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+        assert Objects.equals(document.getAccount().getUserId(), "Tester");
+        document.setTitle("Changed title."); // doesn't work
+        document.getAccount().setCountryCode("EN");
+        objectGraphMapper.save(document.getAccount());
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Node accountNode = graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+        assert accountNode != null;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1;
+        assert Objects.equals(accountNode.getProperty("countryCode"), "EN");
+        Node documentNode = graphDatabaseService.findNode(RESTfulCryptoLabels.DOCUMENTS, "id", DOCUMENT_ID);
+        assert documentNode != null;
+        assert Objects.equals(documentNode.getProperty("title"), "Testdocument-" + DOCUMENT_ID);
+        assert documentNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.INCOMING) == 1;
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+
+  @Test
+  public void example_10() throws Object2NodeMapper.Exception, InterruptedException, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "example_10()");
+    
+    try {
+      final String USER_ID = "Tester";
+      Account account = new Account(USER_ID);
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      final int TEST_DOCUMENTS = 5;
+      account.setDocuments(new ArrayList<>());
+      for (long i = 0; i < TEST_DOCUMENTS; i++) {
+        Document document = new Document(i);
+        document.setAccount(account);
+        document.setTitle("Testdocument-" + i);
+        document.setType("pdf");
+        document.setCreationDate(formattedTime);
+        account.getDocuments().add(document);
+      }
+      final Long KEYRING_ID = 31L;
+      account.setKeyRing(new KeyRing(KEYRING_ID));
+      account.getKeyRing().setPath("dummy");
+      account.getKeyRing().setAccount(account);
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
+          new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Account tester = objectGraphMapper.load(Account.class, USER_ID);
+        assert Objects.equals(USER_ID, tester.getUserId());
+        tester.setCountryCode("EN");
+        tester.getDocuments().forEach(document -> document.setTitle("Changed-" + document.getId()));
+        objectGraphMapper.save(tester);
+        transaction.success();
+      }
+      traceAllNodes();
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Node accountNode = graphDatabaseService.findNode(RESTfulCryptoLabels.ACCOUNTS, "commonName", "Tester");
+        assert accountNode != null;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.HAS, Direction.OUTGOING) == TEST_DOCUMENTS;
+        assert accountNode.getDegree(RESTFulCryptoRelationships.OWNS, Direction.OUTGOING) == 1;
+        assert Objects.equals(accountNode.getProperty("countryCode"), "EN");
+        accountNode.getRelationships(Direction.OUTGOING, RESTFulCryptoRelationships.HAS)
+            .forEach(relationship -> {
+              assert ((String) relationship.getEndNode().getProperty("title")).startsWith("Changed-");
+            });
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
 }
