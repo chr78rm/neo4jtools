@@ -11,7 +11,7 @@
       <LogDir>./log/</LogDir>
       <AutoFlush>true</AutoFlush>
       <BufSize>1024</BufSize>
-      <Limit>1048576</Limit>
+      <Limit>2097152</Limit>
       <Context>
         <Thread name="main">
           <Online>true</Online>
