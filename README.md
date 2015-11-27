@@ -134,6 +134,29 @@ public class KeyItem {
 }
 ```
 
+Another example for one-to-many relationship is the relationship between an Account and its Documents:
+
+```java
+@NodeEntity(label = "ACCOUNTS")
+public class Account {
+...
+  @Links(direction = Direction.OUTGOING, type = "HAS")
+  Collection<Document> documents;
+...
+}
+```
+
+```java
+@NodeEntity(label = "DOCUMENTS")
+public class Document {
+...
+  @SingleLink(direction = Direction.INCOMING, type = "HAS")
+  private Cell<Account> account;
+...
+}
+```
+
+
 ### many-to-many
 
 Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `FULFILLS`
@@ -435,11 +458,11 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-## Loading (and saving) an entity (graph)
+## Database roundtrips (loading and saving)
 
 You need to provide the class and the ID of the desired entity to load the corresponding object. All fields which represent links (`SingleLink` and `Links`, 
 outgoing as well as incoming) will be preset with proxies. As soon as you traverse these proxies, e.g. by invoking Collection.size(), the load of the corresponding objects 
-will be triggered. Call `<U> U load(Class<U> entityClass, Object primaryKeyValue)` on an `ObjectGraphMapper` instance to load a certain entity of type U, see the subsequent 
+will be triggered. Call `<U> U load(Class<U> entityClass, Object id)` on an `ObjectGraphMapper` instance to load a certain entity of type U, see the subsequent 
 code excerpts. First, we will save an entity graph into the database:
 
 ```java
@@ -503,4 +526,63 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
   transaction.success();
 }
 ```
+
+### Some limitations and pitfalls
+
+As the code excerpts above demonstrate, it is possible to load a certain Document and access its parent Account by traversing the incoming `SingleLink`. But doing so
+is a bad idea if you want to modify both the Account and one of its Documents. First, you can't use the Document entity as starting point for a save operation since
+only outgoing links will be processed. That is the following code doesn't work:
+
+```java
+final Long DOCUMENT_ID = 3L;
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  Document document;
+  document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+  assert Objects.equals(DOCUMENT_ID, document.getId());
+  assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+  assert Objects.equals(document.getAccount().getUserId(), "Tester");
+  document.setTitle("Changed title.");
+  document.getAccount().setCountryCode("EN"); // doesn't work
+  objectGraphMapper.save(document);
+  transaction.success();
+}
+```
+
+Now you might try to use the Account as starting point:
+
+```java
+final Long DOCUMENT_ID = 3L;
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  Document document;
+  document = objectGraphMapper.load(Document.class, DOCUMENT_ID);
+  assert Objects.equals(DOCUMENT_ID, document.getId());
+  assert Objects.equals(document.getTitle(), "Testdocument-" + DOCUMENT_ID);
+  assert Objects.equals(document.getAccount().getUserId(), "Tester");
+  document.setTitle("Changed title."); // doesn't work
+  document.getAccount().setCountryCode("EN");
+  objectGraphMapper.save(document);
+  transaction.success();
+}
+```
+
+But this doesn't work either. Now the modification on the Document entity has been lost. The reason for this is that the Account has proxied its Document
+collection when it has been loaded. It doesn't see the modified Document object. If we tried to traverse to its Document collection a new fresh copy
+of Document entities would be loaded including an unmodified Document(id=3).
+
+The actual reason for these failures is that we have a parent-detail relationship between Account and Document. If we want to modify both the Account
+and its Documents we must start with the Account from the beginning:
+
+```java
+final String USER_ID = "Tester";
+try (Transaction transaction = graphDatabaseService.beginTx()) {
+  Account tester = objectGraphMapper.load(Account.class, USER_ID);
+  assert Objects.equals(USER_ID, tester.getUserId());
+  tester.setCountryCode("EN");
+  tester.getDocuments().forEach(document -> document.setTitle("Changed-" + document.getId()));
+  objectGraphMapper.save(tester);
+  transaction.success();
+}
+```
+
+
 (To be continued.)
