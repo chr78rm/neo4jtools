@@ -36,6 +36,8 @@ That is, the Cypher Query Language won't be needed for this.
 
 to build the library along with the unit tests.
 
+[TOC](#TOC)
+
 ## <a name="Modelling"></a>2. Modelling entities with annotations
 
 To illustrate the provided basic object-graph-mapping facilities, I'll make use of a simple domain model consisting of Accounts, Roles,
@@ -229,6 +231,8 @@ public class KeyRing {
 ...
 }
 ```
+
+[TOC](#TOC)
 
 ## <a name="ObjectGraphMapper"></a>3. The ObjectGraphMapper
 
@@ -606,6 +610,8 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
   transaction.success();
 }
 ```
+
+[TOC](#TOC)
 
 
 (To be continued.)
