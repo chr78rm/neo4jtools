@@ -7,13 +7,26 @@ instances based upon mapping annotations on entity classes. Whole (uniformly typ
 `Iterable<T>` given by mapping through the results of a [traversal](http://neo4j.com/docs/stable/tutorial-traversal.html).
 That is, the Cypher Query Language won't be needed for this.
 
+## <a name="TOC"></a>Table of Contents
+
+1. [Build](#Build)
+2. [Modelling entities with annotations](#Modelling)
+  1. [Mapping the identity](#MappingId)
+  2. [Mapping properties](#MappingProperties)
+  3. [Mapping relationships](#MappingRelationships)
+3. [The ObjectGraphMapper](#ObjectGraphMapper)
+  1. [Saving an entity (graph)](#Saving)
+  1. [Database roundtrips (loading and saving)](#Roundtrips)
+
+## <a name="Build"></a>1. Build
+
 [Maven](https://maven.apache.org/) is required to compile the library. Use
 
 `$ mvn clean install`
 
 to build the library along with the unit tests.
 
-# Modelling entities with annotations
+## <a name="Modelling"></a>2. Modelling entities with annotations
 
 To illustrate the provided basic object-graph-mapping facilities, I'll make use of a simple domain model consisting of Accounts, Roles,
 Keyrings, Keyitems and Documents. A particular Account may fulfill multiple Roles. A certain Role can be fulfilled by multiple Accounts, 
@@ -23,7 +36,7 @@ and Encrypted Documents. See the UML class diagram below:
 
 ![uml-class-diagram](graphics/uml-class-diagram.png?raw=true "Simple Domain Model")
 
-## Mapping the identity
+### <a name="MappingId"></a>2.i Mapping the identity
 
 Neo4j 2.x has added (optional) schema support. Neo4jtools uses some of these features to map the application managed object identity. 
 The index definition below
@@ -65,7 +78,7 @@ public class Document {
 }
 ```
 
-## Mapping properties
+### <a name="MappingProperties"></a>2.ii Mapping properties
 
 Fields annotated with `Property` are mapped on corresponding node properties. Since Neo4j supports only primitives like `int`, `long` together
 with `java.lang.String` as value types, it is an error to place a `Property` annotation onto a complex type (like e.g. `java.math.BigInteger`).
@@ -91,12 +104,12 @@ public class Account {
 }
 ```
 
-## Mapping relationships
+### <a name="MappingRelationships"></a>2.iii Mapping relationships
 
 Neo4jtools provides two different annotations to model relationships: `Links` and `SingleLink`. With combinations of these annotations someone
 is able to map one-to-many, many-to-many and one-to-one relationships.
 
-### one-to-many
+#### one-to-many
 
 An example for a one-to-many relationship is the relationship between a Keyring and its Keyitems. From a perspective of a graph database, 
 a Keyring node might have zero, one or multiple (directed) `contains` edges leading to Keyitem nodes. On the other hand every Keyitem
@@ -157,7 +170,7 @@ public class Document {
 ```
 
 
-### many-to-many
+#### many-to-many
 
 Many-to-many relationships are modelled with `Links` annotations on both sides. Indeed an Account node might have multiple `FULFILLS`
 edges leading to various Role nodes whereas a certain Role node might has multiple incoming `FULFILLS` edges from different Account nodes:
@@ -181,7 +194,7 @@ public class Role {
 }
 ```
 
-### one-to-one
+#### one-to-one
 
 As one might expect, one-to-one relationships are modelled with `SingleLink`s on both sides. An example for a one-to-one 
 relationship is the association between an Account and its Keyring. Whereas an Account didn't need necessarily a Keyring,
@@ -207,7 +220,7 @@ public class KeyRing {
 }
 ```
 
-# The ObjectGraphMapper
+## <a name="ObjectGraphMapper"></a>3. The ObjectGraphMapper
 
 The `ObjectGraphMapper` API is the main entry point for managing entity instances, such as loading an entity (graph) from the
 database or saving it. You need to provide a [GraphDatabaseService](http://neo4j.com/docs/2.3.1/javadocs/org/neo4j/graphdb/GraphDatabaseService.html)
@@ -221,7 +234,7 @@ constitutes your database instance. The complete generic type definition of the 
 
 The string representations of your enumerations must match the string literals used within your mapping definitions.
 
-## Saving an entity (graph)
+### <a name="Saving"></a>3.i Saving an entity (graph)
 
 In principle, every mapped entity may serve as starting point for persisting an entity (graph) to the database. Initally, the `ObjectGraphMapper`
 will inspect the annotated id field to decide if there is a matching node within the database. If so, the matching node will be
@@ -238,7 +251,7 @@ assuming that those relationships will be refreshed by the given entity.
 
 Simply call `Node save(Object entity)` on an `ObjectGraphMapper` instance to persist an entity (graph). Below are given some examples.
 
-### Saving a single entity
+#### Saving a single entity
 
 ```java
 GraphDatabaseService graphDatabaseService = ...
@@ -254,7 +267,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-### Saving an entity graph
+#### Saving an entity graph
 
 Note that only outgoing links will be (recursively) processed.
 
@@ -297,7 +310,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
  ```
 
-### SingleLink constraint violations
+#### SingleLink constraint violations
 
 Basically, there are two ways to violate a SingleLink constraint. First, you fail to add a certain single link between two nodes (entities) but that
 link has been marked as non-nullable (which is the default). Or, you might try to add a second relationship (or rather link) between two nodes
@@ -334,7 +347,7 @@ On the other hand non-nullable SingleLink violations won't be detected during a 
 an entity via a missing link after a load operation. This is due to the fact that these kind of errors can't be detected in the first run but will require a second pass. Unsatisfied
 links might occure deep in the recursion at any time but they might be resolved later on when revisiting nodes that have been saved already. 
 
-### Non-nullable properties
+#### Non-nullable properties
 
 By default mapped properties are non-nullable. The `ObjectGraphMapper` enforces this by a fail-fast behaviour. Given the mapping definitions below
 
@@ -364,7 +377,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-### Automatic IDs
+#### Automatic IDs
 
 The `ObjectGraphMapper` can provide automatically IDs for the appropriate annotated properties by relying on a background service.
 Obviously, without this service a missing ID would lead to a failure when saving entities. For every entity that participates
@@ -411,7 +424,7 @@ finally {
 }
 ```
 
-### Optimistic locking
+#### Optimistic locking
 
 Suppose that a certain entity will be loaded twice by different users at the same time. Now, the first user updates the entity and saves it back to the database. After the
 transaction completes the second user is left with an outdated entity object. If he decides to save back his old copy of the entity he may overwrite the changes done by
@@ -458,7 +471,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-## Database roundtrips (loading and saving)
+### <a name="Roundtrips"></a>3.ii Database roundtrips (loading and saving)
 
 You need to provide the class and the ID of the desired entity to load the corresponding object. All fields which represent links (`SingleLink` and `Links`, 
 outgoing as well as incoming) will be preset with proxies. As soon as you traverse these proxies, e.g. by invoking Collection.size(), the load of the corresponding objects 
@@ -527,7 +540,7 @@ try (Transaction transaction = graphDatabaseService.beginTx()) {
 }
 ```
 
-### Some limitations and pitfalls
+#### Some limitations and pitfalls
 
 As the code excerpts above demonstrate, it is possible to load a certain Document and access its parent Account by traversing the incoming `SingleLink`. But doing so
 is a bad idea if you want to modify both the Account and one of its Documents. First, you can't use the Document entity as starting point for a save operation since
