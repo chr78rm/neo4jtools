@@ -3,9 +3,11 @@ package de.christofreichardt.neo4jtools.ogm;
 import de.christofreichardt.diagnosis.AbstractTracer;
 import de.christofreichardt.diagnosis.Traceable;
 import de.christofreichardt.diagnosis.TracerFactory;
+import java.lang.reflect.Field;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 
 /**
@@ -67,9 +69,55 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
     
     try {
       tracer.out().printfIndentln("entity = %s", entity);
-      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(entity, ObjectGraphMapper.mappingInfo, this.graphDatabaseService);
       
+      Object2NodeMapper object2NodeMapper = new Object2NodeMapper(entity, ObjectGraphMapper.mappingInfo, this.graphDatabaseService);
       return object2NodeMapper.map(this.labels, this.relationshipTypes);
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  public void remove(Object entity) throws GraphPersistenceException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "remove(Object entity)");
+    
+    try {
+      tracer.out().printfIndentln("entity = %s", entity);
+      
+      PrimaryKeyData primaryKeyData = ObjectGraphMapper.mappingInfo.getPrimaryKeyMapping(entity.getClass());
+      PropertyData propertyData = ObjectGraphMapper.mappingInfo.getPropertyMappingForField(primaryKeyData.getFieldName(), entity.getClass());
+      ReflectedClass reflectedClass = new ReflectedClass(entity.getClass());
+      try {
+        Field field = reflectedClass.getDeclaredField(propertyData.getName());
+        field.setAccessible(true);
+        Object primaryKeyValue = field.get(entity);
+        S specificLabel = ObjectGraphMapper.mappingInfo.getSpecificLabel(entity.getClass(), this.labels);
+        Node entityNode = this.graphDatabaseService.findNode(specificLabel, propertyData.getName(), primaryKeyValue);
+        Iterable<Relationship> relationships = entityNode.getRelationships();
+        for (Relationship relationship : relationships) {
+          Node otherNode = relationship.getOtherNode(entityNode);
+          Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(otherNode, mappingInfo);
+          int preViolations = node2ObjectMapper.nonNullableSingleLinkViolations(this.relationshipTypes).size();
+          
+          tracer.out().printfIndentln("preViolations = %d", preViolations);
+          
+          relationship.delete();
+          int postViolations = node2ObjectMapper.nonNullableSingleLinkViolations(this.relationshipTypes).size();
+          
+          tracer.out().printfIndentln("postViolations = %d", postViolations);
+          
+          if (preViolations != postViolations)
+            throw new GraphPersistenceException("SingleLink constraint violation.");
+        }
+        entityNode.delete();
+      }
+      catch (NoSuchFieldException ex) {
+        throw new GraphPersistenceException("Invalid mapping definition.", ex);
+      }
+      catch (IllegalAccessException ex) {
+        throw new Error(ex); // should be impossible since the field has been made accessible
+      }
     }
     finally {
       tracer.wayout();

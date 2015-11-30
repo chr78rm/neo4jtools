@@ -417,9 +417,8 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
       keyRing.getKeyItems().add(keyItem);
       ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper = 
           new ObjectGraphMapper<>(ObjectGraphMapperUnit.graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
-      Node node;
       try (Transaction transaction = ObjectGraphMapperUnit.graphDatabaseService.beginTx()) {
-        node = objectGraphMapper.save(keyRing);
+        objectGraphMapper.save(keyRing);
         transaction.success();
       }
       traceAllNodes();
@@ -452,7 +451,8 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
       String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
       
       final Long KEYITEM_ID = 0L;
-      KeyRing keyRing = new KeyRing(0L);
+      final Long KEYRING_ID = 0L;
+      KeyRing keyRing = new KeyRing(KEYRING_ID);
       keyRing.setPath("." + File.separator + "store" + File.separator + "keystore.jks");
       KeyItem keyItem = new KeyItem(KEYITEM_ID);
       keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
@@ -480,6 +480,49 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         
         transaction.success();
       }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void remove_1() throws GraphPersistenceException {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "remove_1()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      Account account = new Account("Tester");
+      account.setCountryCode("DE");
+      account.setLocalityName("Rodgau");
+      account.setStateName("Hessen");
+      final Long KEYRING_ID = 0L;
+      KeyRing keyRing = new KeyRing(KEYRING_ID);
+      keyRing.setPath("." + File.separator + "store" + File.separator + "keystore.jks");
+      account.setKeyRing(keyRing);
+      final Long KEYITEM_ID = 0L;
+      KeyItem keyItem = new KeyItem(KEYITEM_ID);
+      keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem.setCreationDate(formattedTime);
+      keyRing.setKeyItems(new ArrayList<>());
+      keyRing.getKeyItems().add(keyItem);
+      
+      Node node;
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper
+          = new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        node = objectGraphMapper.save(account);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        objectGraphMapper.remove(keyItem);
+        transaction.success();
+      }
+     traceAllNodes();
     }
     finally {
       tracer.wayout();
