@@ -21,9 +21,9 @@ import java.time.LocalTime;
 import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -433,6 +433,50 @@ public class ObjectGraphMapperUnit extends BasicMapperUnit {
         Assert.assertTrue("Wrong KeyItem.", Objects.equals(keyItems.get(0).getId(), KEYITEM_ID));
         
         keyRing.getAccount();
+        
+        transaction.success();
+      }
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  @Test
+  public void nonNullableSingleLinks() throws MappingInfo.Exception, Object2NodeMapper.Exception, Node2ObjectMapper.Exception {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("void", this, "nonNullableSingleLinks()");
+    
+    try {
+      LocalDateTime localDateTime = IsoChronology.INSTANCE.dateNow().atTime(LocalTime.now());
+      String formattedTime = localDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+      
+      final Long KEYITEM_ID = 0L;
+      KeyRing keyRing = new KeyRing(0L);
+      keyRing.setPath("." + File.separator + "store" + File.separator + "keystore.jks");
+      KeyItem keyItem = new KeyItem(KEYITEM_ID);
+      keyItem.setAlgorithm("AES/CBC/PKCS5Padding");
+      keyItem.setCreationDate(formattedTime);
+      keyRing.setKeyItems(new ArrayList<>());
+      keyRing.getKeyItems().add(keyItem);
+      
+      Node node;
+      ObjectGraphMapper<RESTfulCryptoLabels, RESTFulCryptoRelationships> objectGraphMapper
+          = new ObjectGraphMapper<>(graphDatabaseService, RESTfulCryptoLabels.class, RESTFulCryptoRelationships.class);
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        node = objectGraphMapper.save(keyRing);
+        transaction.success();
+      }
+      traceAllNodes();
+      
+      try (Transaction transaction = graphDatabaseService.beginTx()) {
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(node);
+        Set<SingleLinkData> nonNullableSingleLinkViolations = node2ObjectMapper.nonNullableSingleLinkViolations(RESTFulCryptoRelationships.class);
+        for (SingleLinkData singleLinkData : nonNullableSingleLinkViolations) {
+          tracer.out().printfIndentln("singleLinkData = %s", singleLinkData);
+        }
+        
+        Assert.assertTrue("Expected exactly one violation.", nonNullableSingleLinkViolations.size() == 1);
         
         transaction.success();
       }

@@ -14,8 +14,11 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import org.neo4j.graphdb.Direction;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.Relationship;
 import org.neo4j.graphdb.RelationshipType;
 
 /**
@@ -104,6 +107,33 @@ public class Node2ObjectMapper implements Traceable {
         throw new Node2ObjectMapper.Exception("No most specific class found.");
       
       return mostSpecificClass;
+    }
+    finally {
+      tracer.wayout();
+    }
+  }
+  
+  public <T extends Enum<T> & RelationshipType> Set<SingleLinkData> nonNullableSingleLinkViolations(Class<T> relationshipTypes) {
+    AbstractTracer tracer = getCurrentTracer();
+    tracer.entry("SingleLinkData[]", this, "nonNullableSingleLinkViolations(Class<T> relationshipTypes)");
+
+    try {
+      return this.mappingInfo.getSingleLinkMappings(this.mostSpecificClass)
+          .stream()
+          .filter(singleLinkData -> !singleLinkData.getValue().isNullable())
+          .filter(nonNullableSingleLinkMapping -> {
+            tracer.out().printfIndentln("nonNullableSingleLinkMapping = %s", nonNullableSingleLinkMapping);
+            RelationshipType relationshipType = Enum.valueOf(relationshipTypes, nonNullableSingleLinkMapping.getValue().getType());
+            Iterable<Relationship> relationships = this.node.getRelationships(nonNullableSingleLinkMapping.getValue().getDirection(), relationshipType);
+            int counter = 0;
+            for (Relationship relationship : relationships) {
+              if (nonNullableSingleLinkMapping.getValue().matches(this.mostSpecificClass, relationship, nonNullableSingleLinkMapping.getValue().getDirection()))
+                counter++;
+            }
+            return counter == 0;
+          })
+          .map(nonNullableSingleLinkViolation -> nonNullableSingleLinkViolation.getValue())
+          .collect(Collectors.toSet());
     }
     finally {
       tracer.wayout();
