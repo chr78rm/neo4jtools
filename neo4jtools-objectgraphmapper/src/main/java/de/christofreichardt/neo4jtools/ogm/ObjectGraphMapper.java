@@ -26,6 +26,9 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
       throw new Error(ex);
     }
   }
+  static public MappingInfo mappingInfo() {
+    return ObjectGraphMapper.mappingInfo;
+  }
   
   final private GraphDatabaseService graphDatabaseService;
   final private Class<S> labels;
@@ -45,18 +48,24 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
       tracer.out().printfIndentln("entityClass = %s", entityClass.getName());
       tracer.out().printfIndentln("key = %s", primaryKeyValue);
       
+      U entity;
       PrimaryKeyData primaryKeyData = ObjectGraphMapper.mappingInfo.getPrimaryKeyMapping(entityClass);
       PropertyData propertyData = ObjectGraphMapper.mappingInfo.getPropertyMappingForField(primaryKeyData.getFieldName(), entityClass);
       if (!propertyData.getClazz().isAssignableFrom(primaryKeyValue.getClass()))
         throw new IllegalArgumentException("Invalid type for the primary key. Need a '" + propertyData.getClazz().getName() + "' instance.");
       S specificLabel = ObjectGraphMapper.mappingInfo.getSpecificLabel(entityClass, this.labels);
       Node entityNode = this.graphDatabaseService.findNode(specificLabel, propertyData.getName(), primaryKeyValue);
-      Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, ObjectGraphMapper.mappingInfo);
-      if (!entityClass.isAssignableFrom(node2ObjectMapper.getMostSpecificClass()))
-        throw new IllegalArgumentException("Inappropriate specified class '" + entityClass.getName() + "'.");
-      Object object = node2ObjectMapper.map(this.relationshipTypes);
+      if (entityNode != null) {
+        Node2ObjectMapper node2ObjectMapper = new Node2ObjectMapper(entityNode, ObjectGraphMapper.mappingInfo);
+        if (!entityClass.isAssignableFrom(node2ObjectMapper.getMostSpecificClass()))
+          throw new IllegalArgumentException("Inappropriate specified class '" + entityClass.getName() + "'.");
+        Object object = node2ObjectMapper.map(this.relationshipTypes);
+        entity = entityClass.cast(object);
+      }
+      else
+        entity = null;
       
-      return entityClass.cast(object);
+      return entity;
     }
     finally {
       tracer.wayout();
@@ -126,6 +135,6 @@ public class ObjectGraphMapper<S extends Enum<S> & Label, T extends Enum<T> & Re
 
   @Override
   public AbstractTracer getCurrentTracer() {
-    return TracerFactory.getInstance().getCurrentPoolTracer();
+    return TracerFactory.getInstance().getDefaultTracer();
   }
 }
